@@ -131,35 +131,59 @@ class FolderValidation(enum.Enum):
     MULTI_MODS = 2
 
 
-def is_valid_mod_folder(folder: Path) -> Tuple[FolderValidation, Dict[str, List[Path]]]:
+def is_valid_mod_folder(folder: Path) -> Tuple[FolderValidation, str, List[Path]]:
     """
-    Recursively look for folders containing a *.ini.
-
-    Returns:
-        status, {mod_name: [folder, ...]}
+    Returns a tuple of:
+    0. FolderValidation
+    1. Name of the mod (name of root folder)
+    2. List of paths that contain .ini files (if SINGLE_MOD or MULTI_MODS)
+    
+    Rule:
+    - If the current folder contains one or more .ini files, it's SINGLE_MOD (collect all descendant subpaths with .ini).
+    - If not, but it contains several subfolders, and those subfolders contain .ini files, it's MULTI_MODS.
+    - If there are no .ini files anywhere relevant, it's NOT_MOD.
     """
     if not folder.is_dir():
-        return FolderValidation.NOT_MOD, {}
+        return (FolderValidation.NOT_MOD, "", [])
+    
+    root = folder
+    while True:
+        # Case 1. The root contains a .ini file
+        # If so this is a single mod
+        if any(f.is_file() and f.suffix == ".ini" for f in root.iterdir()):
+            return (
+                FolderValidation.SINGLE_MOD,
+                root.name,
+                [root]
+            )
+        
+        # Case 2. There is only 1 subfolder.
+        subdirs = [d for d in root.iterdir() if d.is_dir()]
 
-    if any((folder / f).is_file() for f in folder.glob("*.ini")):
-        return FolderValidation.SINGLE_MOD, {folder.name: [folder]}
-
-    collected: Dict[str, List[Path]] = {}
-    for sub in folder.iterdir():
-        if not sub.is_dir():
+        # Move to the next subfolder if there is only one
+        if len(subdirs) == 1:
+            root = subdirs[0]
             continue
-        status, child = is_valid_mod_folder(sub)
-        if status is not FolderValidation.NOT_MOD:
-            # merge
-            for k, v in child.items():
-                collected.setdefault(k, []).extend(v)
 
-    if not collected:
-        return FolderValidation.NOT_MOD, {}
-    if len(collected) == 1:
-        return FolderValidation.SINGLE_MOD, collected
-    return FolderValidation.MULTI_MODS, collected
+        # Case 3. There are multiple subfolders
+        # If some of the subfolders contain .ini files, this is a multi-mods folder
+        paths: List[Path] = []
+        if len(subdirs) > 1:
+            for sub in subdirs:
+                if any(f.is_file() and f.suffix == ".ini" for f in sub.iterdir()):
+                    paths.append(sub)
 
+
+            # If no valid subfolders were found, this is not a mod folder
+            if not paths:
+                return (FolderValidation.NOT_MOD, "", [])
+
+            # If there is only one valid subfolder, this is a single mod folder
+            if len(paths) == 1:
+                return (FolderValidation.SINGLE_MOD, paths[0].name, paths)
+
+            # If there are multiple valid subfolders, this is a multi-mods folder
+            return (FolderValidation.MULTI_MODS, "", paths)
 
 def validate_and_collect(into: Dict[str, List[Path]], zip_file: Path) -> None:
     """Extract zip → validate → populate `into` dict (mod_name -> [paths])"""
@@ -169,13 +193,14 @@ def validate_and_collect(into: Dict[str, List[Path]], zip_file: Path) -> None:
         return
 
     root = SAVED_MODS_FOLDER / zip_file.stem
-    status, mods = is_valid_mod_folder(root)
+    status, name, paths = is_valid_mod_folder(root)
+
     if status is FolderValidation.NOT_MOD:
         print(f"\t[ ! ] {zip_file.name} isn't a mod, discarding.")
         shutil.rmtree(root, ignore_errors=True)
         return
 
-    into.update(mods)
+    into.update({name: paths})
 
 
 # ────────────────────────────
@@ -218,8 +243,11 @@ def install_handler() -> None:
         space_separated=True,
     )
 
+    # normalise to tuple
+    sel = (sel,) if isinstance(sel, int) else sel
     chosen: Dict[str, List[Path]] = {}
-    if sel == 0:
+
+    if 0 in sel:
         for z in zips:
             validate_and_collect(chosen, z)
     else:
@@ -248,7 +276,6 @@ def install_handler() -> None:
     save_modlist(modlist)
     go_back()
 
-
 def delete_handler() -> None:
     """
     Removes selected mods entirely (files & entry).
@@ -265,8 +292,9 @@ def delete_handler() -> None:
         options=[m["name"] for m in modlist],
         space_separated=True,
     )
+    sel = (sel,) if isinstance(sel, int) else sel
 
-    if sel == 0:
+    if 0 in sel:
         for d in (SAVED_MODS_FOLDER, ACTIVE_MODS_FOLDER):
             shutil.rmtree(d, ignore_errors=True)
         modlist.clear()
@@ -281,15 +309,9 @@ def delete_handler() -> None:
     save_modlist(modlist)
     go_back()
 
-
 def toggle_handler() -> None:
     """
     Toggle (enable ⇄ disable) selected mods.
-
-    • Disabled mods → enabled  (copies files in)
-    • Enabled  mods → disabled (removes files)
-
-    User can pick multiple indexes or 0 for "toggle ALL".
     """
 
     modlist = get_modlist()
@@ -303,18 +325,17 @@ def toggle_handler() -> None:
         options=[m["name"] for m in modlist],
         space_separated=True,
     )
-
-    targets = range(1, len(modlist) + 1) if sel == 0 else sel
+    sel = (sel,) if isinstance(sel, int) else sel
+    targets = range(1, len(modlist) + 1) if 0 in sel else sel
 
     for idx in targets:
         if not (1 <= idx <= len(modlist)):
             continue
 
         mod = modlist[idx - 1]
-        new_state = not mod["enabled"]
-        mod["enabled"] = new_state
+        mod["enabled"] = not mod["enabled"]
 
-        if new_state:
+        if mod["enabled"]:
             _activate_mod(mod)
             print(f"\t[ + ] Enabled  {mod['name']}")
         else:
@@ -323,6 +344,222 @@ def toggle_handler() -> None:
 
     save_modlist(modlist)
     go_back()
+
+
+def group_handler() -> None:
+    """
+    Combine several installed mods into a single “meta-mod” entry.
+    """
+
+    print("- Create a group -".center(40, "="))
+    print(
+        "This will create a group of mods, allowing you to toggle them all at once.\n"
+    )
+
+    modlist: ModList = get_modlist()
+    if not modlist:
+        print("No mods installed.")
+        return go_back()
+
+    sel = get_menu_input(
+        prompt="Indexes of mods to group (space-separated): ",
+        zero_option_text="[ 0 ] Auto make group by name similarity",
+        options=[m["name"] for m in modlist],
+        space_separated=True,
+    )
+    sel = (sel,) if isinstance(sel, int) else sel
+
+    if 0 in sel:
+        # placeholder for future smart-group logic
+        print("Auto-select not implemented yet.")
+        return go_back()
+
+    selected_mods = [modlist[idx - 1] for idx in sel if 1 <= idx <= len(modlist)]
+    if not selected_mods:
+        print("No valid mods selected.")
+        return go_back()
+    
+    print("\n")
+    print("- Selected -".center(20, " "))
+    for idx, m in enumerate(selected_mods, 1):
+        print(f"[ {idx} ] {m['name']}")
+
+    print("\n")
+
+    # ------------- group name -------------
+    while True:
+        group_name = (
+            input("Group name (leave empty to auto-generate): ").strip().lower()
+        )
+        if not group_name:
+            group_name = "-".join(sorted(set(m["name"] for m in selected_mods)))
+            print(f"Auto-generated group name: '{group_name}'")
+        if any(m["name"] == group_name for m in modlist):
+            print(f"'{group_name}' already exists.")
+            continue
+        break
+
+    # ------------- paths dedupe -----------
+    group_paths: List[str] = []
+    seen: set[str] = set()
+    for m in selected_mods:
+        for p in m["path"]:
+            if p not in seen:
+                seen.add(p)
+                group_paths.append(p)
+
+    # ------------- commit -----------------
+    modlist = [m for m in modlist if m not in selected_mods]
+    modlist.append(ModObject(name=group_name, path=group_paths, enabled=False))
+    save_modlist(modlist)
+
+    print(f"\t[ + ] Created group '{group_name}' with {len(selected_mods)} mods.")
+    go_back()
+
+
+def restore_entry_from_paths(
+    modlist: ModList,
+    paths_iter: Generator[Path, None, None],
+    delete_invalid: bool = False,
+    save: bool = True,  # If true, copy mod contents to SavedMods if not there already
+) -> None:
+    """
+    Scan *paths_iter* for valid mods and ensure `modlist` contains them.
+
+    EXTRA RULE (new):
+        When adding or updating a mod we first check whether **any** of its
+        folder paths are already referenced by another **multi-path** mod.
+        If so, the new entry is *skipped* (or its conflicting paths are pruned)
+        to avoid duplicated resources.
+    """
+
+    # helper: a live view of every path registered under a multi-path mod
+    def _multipath_set(exclude: str | None = None) -> set[str]:
+        return {
+            p
+            for m in modlist
+            if len(m["path"]) > 1 and m["name"] != exclude
+            for p in m["path"]
+        }
+
+    def _handle_mod_restore(name: str, path: str) -> None:
+        # conflict check against existing multi-mods
+        if path in _multipath_set():
+            print(
+                f"\t[ - ] Skipping {name}: "
+                "its folder already belongs to another multi-path mod."
+            )
+            return
+
+        existing = next((m for m in modlist if m["name"] == name), None)
+        
+        if existing:
+            if existing["path"] != [path]:
+                existing["path"] = [path]
+                print(f"\t[ / ] Updated {name} paths.")
+        else:
+            modlist.append(ModObject(name=name, path=[path], enabled=False))
+            print(f"\t[ + ] Added {name}.")
+
+        if save and not (SAVED_MODS_FOLDER / name).exists():
+            shutil.copytree(entry, SAVED_MODS_FOLDER / name)
+            print(f"\t[ + ] Copied {name} to SavedMods folder.")
+
+    for entry in paths_iter:
+        # ─── reject plain files ─────────────────────────────────────────────
+        if not entry.is_dir():
+            if entry.is_file() and entry.name == "modlist.json":
+                continue
+            print(f"\t[ ! ] {entry.name} is not a directory and SHOULD NOT BE HERE")
+            if delete_invalid:
+                shutil.rmtree(entry, ignore_errors=True)
+                print(f"\t[ + ] Deleted {entry.name}.")
+            continue
+
+        # ─── classify the candidate folder ─────────────────────────────────
+        status, mod_name, mod_paths = is_valid_mod_folder(entry)
+
+        if status == FolderValidation.NOT_MOD:
+            print(f"\t[ ! ] {entry.name} is not a valid mod and SHOULD NOT BE HERE")
+            if delete_invalid:
+                shutil.rmtree(entry, ignore_errors=True)
+                print(f"\t[ + ] Deleted {entry.name}.")
+            continue
+
+        # ─── Ensure no duplicate entries ────────────────────────────────
+        if any(m["name"] == mod_name for m in modlist):
+            # print(f"\t[ ! ] {mod_name} already exists in modlist.json, skipping.")
+            continue
+
+        # ─── SINGLE-MOD case ───────────────────────────────────────────────
+        if status == FolderValidation.SINGLE_MOD:
+            _handle_mod_restore(mod_name, str(mod_paths[0]))
+            continue
+
+        # ─── MULTI-MODS case ───────────────────────────────────────────────
+        elif status == FolderValidation.MULTI_MODS:
+            for path in mod_paths:
+                mod_path = str(path)
+                _handle_mod_restore(mod_name, mod_path)
+
+
+def rebuild_handler() -> None:
+    """
+    Create modlist.json from SavedMods folder or Mods folder.
+
+    This is useful for the case in which either mod folder change outside of the manager,
+    or the modlist.json gets corrupted.
+
+    Also ensures there are no duplicate entries in modlist.json.
+    Meaning mods that are present in other mods paths
+    """
+
+    print("- Rebuild modlist -".center(40, "="))
+    print(
+        "This will make sure all valid mods in SavedMods or Mods folder are registered in modlist.json."
+    )
+    print("\n\n")
+
+    modlist = get_modlist()
+
+    delete_invalid = get_confirmation(
+        "Do you want to delete invalid mods and files? (y/n): ",
+        default="n",
+    )
+
+    # Check if SavedMods folder has valid mods
+    saved_mods = SAVED_MODS_FOLDER.glob("*")
+
+    if any(saved_mods):
+        restore_entry_from_paths(
+            modlist, SAVED_MODS_FOLDER.glob("*"), delete_invalid=delete_invalid
+        )
+
+    active_mods = ACTIVE_MODS_FOLDER.glob("*")
+
+    if any(active_mods):
+        restore_entry_from_paths(
+            modlist, ACTIVE_MODS_FOLDER.glob("*"), delete_invalid=delete_invalid
+        )
+
+    # collect every path that lives in a multi-path entry
+    multi_paths: set[str] = {
+        p for m in modlist if len(m["path"]) > 1 for p in m["path"]
+    }
+
+    # single-path mods to drop
+    to_delete = {m["name"] for m in modlist if len(m["path"]) == 1 and m["path"][0] in multi_paths}
+
+    for name in to_delete:
+        print(f"\t[ - ] Removing {name} (path already covered by a multi-mod).")
+
+    # mutate in place to keep external references valid
+    modlist[:] = [m for m in modlist if m["name"] not in to_delete]
+
+    save_modlist(modlist)
+    print(f"[ + ] Restored mods from SavedMods and Mods folders.")
+
+    return go_back()
 
 
 def list_handler() -> None:
@@ -361,231 +598,6 @@ def list_handler() -> None:
         )
     print("=" * total_w)
     go_back()
-
-
-def group_handler() -> None:
-    """
-    Combine several installed mods into a single “meta-mod” entry.
-
-    • The new group inherits the *union* of all selected mods’ paths.
-    • The original individual entries are removed.
-    • The group is added *disabled* so the user can toggle it later.
-    """
-
-    print("- Create a group -".center(40, "="))
-    print(
-        "This will create a group of mods, allowing you to toggle them all at once.\n"
-    )
-
-    modlist: ModList = get_modlist()
-    if not modlist:
-        print("No mods installed.")
-        return go_back()
-
-    # ── choose members ──────────────────────────────────────────
-    sel = get_menu_input(
-        prompt="Indexes of mods to group (space-separated): ",
-        zero_option_text="[ 0 ] Auto make group by name similarity",
-        options=[m["name"] for m in modlist],
-        space_separated=True,
-    )
-
-    if sel == 0:
-        # selected_mods: ModList = modlist[:]  # copy
-        print("Auto-selecting mods by name similarity…")
-        # todo! # this is a placeholder, implement auto-selection logic
-        selected_mods = []
-    else:
-        selected_mods = [modlist[idx - 1] for idx in sel if 1 <= idx <= len(modlist)]
-
-    if not selected_mods:
-        print("No valid mods selected.")
-        return go_back()
-
-    # ── choose a unique group name ─────────────────────────────
-
-    group_name: str = ""
-    while True:
-        try:
-            print("\t - You can use format 'groupname-modname' to create an exclusive group.")
-            print("\t - Exclusive groups will only allow one mod under the group to be enabled at a time.")
-
-            group_name = input(
-                "Group name (leave empty to auto-generate): "
-            ).strip().lower()
-
-            if not group_name:
-                # Auto-generate a group name based on selected mods
-                group_name = "-".join(
-                    sorted(set(m["name"] for m in selected_mods))
-                )
-                print(f"Auto-generated group name: '{group_name}'")
-
-            break
-
-        except KeyboardInterrupt:
-            print("\nInterrupted, going back.")
-            return go_back()
-
-        except Exception as e:
-            print("[ ! ] That is not a valid name.")
-            continue
-
-    if any(m["name"] == group_name for m in modlist):
-        print(f"A mod or group called '{group_name}' already exists.")
-        return go_back()
-
-    # ── build path list (deduplicated, keeps order) ────────────
-    group_paths: List[str] = []
-    seen: set[str] = set()
-    for mod in selected_mods:
-        for p in mod["path"]:
-            if p not in seen:
-                seen.add(p)
-                group_paths.append(p)
-
-    # ── drop originals & append new group ──────────────────────
-    modlist = [m for m in modlist if m not in selected_mods]
-    modlist.append(
-        ModObject(
-            name=group_name,
-            path=group_paths,
-            enabled=False,  # groups start disabled
-        )
-    )
-
-    save_modlist(modlist)
-    print(f"\t[ + ] Created group '{group_name}' with {len(selected_mods)} mods.")
-
-    return go_back()
-
-
-def restore_entry_from_paths(
-    modlist: ModList,
-    paths_iter: Generator[Path, None, None],
-    delete_invalid: bool = False,
-    save: bool = True,  # If true, will copy mod contents to saved mods folder if doesn't already exist
-):
-
-    for entry in paths_iter:
-        if not entry.is_dir():
-            print(f"\t[ ! ] {entry.name} is not a directory and SHOULD NOT BE HERE")
-
-            if delete_invalid:
-                # If user wants to delete invalid mods, remove the folder
-                shutil.rmtree(entry, ignore_errors=True)
-                print(f"\t[ + ] Deleted {entry.name}.")
-
-            continue
-
-        status, mods = is_valid_mod_folder(entry)
-
-        if status == FolderValidation.NOT_MOD:
-            # If the folder is not a mod, we skip it
-            print(f"\t[ ! ] {entry.name} is not a valid mod and SHOULD NOT BE HERE")
-
-            if delete_invalid:
-                # If user wants to delete invalid mods, remove the folder
-                shutil.rmtree(entry, ignore_errors=True)
-                print(f"\t[ + ] Deleted {entry.name}.")
-
-            continue
-
-        # ============================================================================================
-        # -- Whether we find a single mod or multiple mods, we will add them to the modlist
-        # -- if they don't already exist.
-        # -- if they exists, they will be updated with the new paths.
-
-        elif status == FolderValidation.SINGLE_MOD:
-            mod_name = entry.name
-            if not any(
-                m["name"] == mod_name for m in modlist
-            ):  # If mod doesn't already exist
-
-                # Add the mod to the modlist
-                modlist.append(
-                    ModObject(name=mod_name, path=[str(entry)], enabled=False)
-                )
-                print(f"\t[ + ] Added {mod_name}.")
-
-            else:
-                # If  paths are different, update the existing mod
-                existing_mod = next(m for m in modlist if m["name"] == mod_name)
-                if existing_mod["path"] != [str(entry)]:
-                    existing_mod["path"] = [str(entry)]
-                    print(f"\t[ / ] Updated {mod_name} paths.")
-
-            # Save the mod to the SavedMods folder if it doesn't already exist
-            if save and not (SAVED_MODS_FOLDER / mod_name).exists():
-                shutil.copytree(entry, SAVED_MODS_FOLDER / mod_name)
-                print(f"\t[ + ] Copied {mod_name} to SavedMods folder.")
-
-        elif status == FolderValidation.MULTI_MODS:
-            for mod_name, paths in mods.items():
-
-                if not any(
-                    m["name"] == mod_name for m in modlist
-                ):  # If mod doesn't already exist
-                    modlist.append(
-                        ModObject(
-                            name=mod_name, path=[str(p) for p in paths], enabled=False
-                        )
-                    )
-                    print(f"\t[ + ] Added {mod_name}.")
-
-                # If mod already exists, update the paths
-                else:
-                    existing_mod = next(m for m in modlist if m["name"] == mod_name)
-                    if existing_mod["path"] != [str(p) for p in paths]:
-                        existing_mod["path"] = [str(p) for p in paths]
-                        print(f"\t[ / ] Updated {mod_name} paths.")
-
-                # Save the mod to the SavedMods folder if it doesn't already exist
-                if save and not (SAVED_MODS_FOLDER / mod_name).exists():
-                    shutil.copytree(entry, SAVED_MODS_FOLDER / mod_name)
-                    print(f"\t[ + ] Copied {mod_name} to SavedMods folder.")
-
-
-def rebuild_handler() -> None:
-    """
-    Create modlist.json from SavedMods folder or Mods folder.
-
-    This is useful for the case in which either mod folder change outside of the manager,
-    or the modlist.json gets corrupted.
-    """
-
-    print("- Rebuild modlist -".center(40, "="))
-    print(
-        "This will make sure all valid mods in SavedMods or Mods folder are registered in modlist.json."
-    )
-    print("\n\n")
-
-    modlist = get_modlist()
-
-    delete_invalid = get_confirmation(
-        "Do you want to delete invalid mods and files? (y/n): ",
-        default="n",
-    )
-
-    # Check if SavedMods folder has valid mods
-    saved_mods = SAVED_MODS_FOLDER.glob("*")
-
-    if any(saved_mods):
-        restore_entry_from_paths(
-            modlist, SAVED_MODS_FOLDER.glob("*"), delete_invalid=delete_invalid
-        )
-
-    active_mods = ACTIVE_MODS_FOLDER.glob("*")
-
-    if any(active_mods):
-        restore_entry_from_paths(
-            modlist, ACTIVE_MODS_FOLDER.glob("*"), delete_invalid=delete_invalid
-        )
-
-    print(f"[ + ] Restored mods from SavedMods and Mods folders.")
-    save_modlist(modlist)
-
-    return go_back()
 
 
 # ────────────────────────────

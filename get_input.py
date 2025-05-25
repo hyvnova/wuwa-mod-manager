@@ -1,82 +1,86 @@
+from re import A
 import sys
+from typing import List, Tuple, Union
 from ezstools.string_tools import sort_by_similitude
 
+
 def get_menu_input(
-        zero_option_text: str,
-        prompt: str,
-        options: list[str],
-        space_separated: bool = False,
-) -> int | tuple[int, ...]:
+    zero_option_text: str,
+    prompt: str,
+    options: List[str],
+    space_separated: bool = False,
+) -> Union[int, Tuple[int, ...]]:
     """
-    Gets a valid user input from a menu
+    Ask the user to pick from *options*.
+    The caller decides whether multiple picks are allowed (``space_separated``).
 
-    Accept both options and index as responses.
+    • If the user types **numbers** → those numbers are taken as 1-based indexes
+      (0 is the special “zero option”).
+    • If the user types **text** → we fuzzy-match each token against the option list
+      with ``sort_by_similitude`` and take the closest hit.
 
-    If space_separated is True, it will allow the user to input multiple options separated by spaces. and will return an tuple of selected options.
+    Returns
+    -------
+    int
+        a single index (when ``space_separated=False``)
+    tuple[int, ...]
+        many indexes in input order with duplicates removed
     """
+
     print(zero_option_text)
-    for index, option in enumerate(options, start=1):
-        print(f"[ {index} ]\t{option}")
+    for idx, opt in enumerate(options, start=1):
+        print(f"[ {idx} ]\t{opt}")
+
+    def _match_token(token: str) -> int | None:
+        """Return 1-based index for a textual token (best fuzzy match) or None."""
+        token = token.strip().lower()
+        if not token:
+            return None
+        best = sort_by_similitude(token, options, case_sensitive=False)[-1]
+        return options.index(best) + 1 if best in options else None
 
     while True:
-        try:
-            selection = input(prompt)
+        raw = input(prompt).strip()
+        if not raw:
+            print("That's not it.")
+            continue
 
-            if not selection:
-                print("That's not it.")
-                continue
+        # Split once if multi-select, otherwise keep as single token
+        tokens = raw.split() if space_separated else [raw]
 
-            # if the input is a number, check if it's within the range of options
-            if selection.isdigit():
-                selection = int(selection)
-                if 0 <= selection <= len(options):
-                    return selection
+        indices: List[int] = []
+        for tok in tokens:
+            if tok.isdigit():
+                num = int(tok)
+                if 0 <= num <= len(options):
+                    indices.append(num)
                 else:
-                    print("Invalid option. Please select a valid number.")
-           
-            # If the input is a string, check if it matches any option
-            elif isinstance(selection, str):
-
-                if space_separated:
-                    # Split the input by spaces and check each part its a valid index
-                    selection = selection.strip().lower().split()
-                    matched_options = []
-
-                    for part in selection:
-                        if part.isdigit():
-                            part = int(part)
-                            if 0 < part <= len(options):
-                                matched_options.append(part) # Convert to zero-based index
-                        else:
-                            # skip if the part is not a digit
-                            print(f"\t [ ! ]\t{part} is not a valid option and therefore will be ignored.")
-
-                    selection = tuple(matched_options)
-                        
-                else:
-                    # Sort options by similarity to the input
-                    selection = sort_by_similitude(selection.strip().lower(), options, case_sensitive=False)[-1]
-
-                    # map selection to its index
-                    selection = options.index(selection) + 1 if selection in options else None
-
-                    # This shouldnt ever happen, but just in case
-                    if selection is None:
-                        print("[ FATAL ]\tSelection not found in options. SHOULD NEVER HAPPEN.")
-                        sys.exit(1)
-
+                    print(f"\t[ ! ] {num} is out of range and will be ignored.")
             else:
-                print("Can't understand that input >u<")
-                continue
+                match = _match_token(tok)
+                if match is None:
+                    print(f"\t[ ! ] '{tok}' not recognised; ignored.")
+                else:
+                    indices.append(match)
 
-            # Flush the input buffer
+        # drop duplicates while keeping order
+        seen: set[int] = set()
+        indices = [i for i in indices if not (i in seen or seen.add(i))]
+
+        if not indices:
+            print("No valid selection made.")
+            continue
+
+        # Flush any stray buffered input (Windows quirk guard)
+        try:
             sys.stdin.flush()
-            print("\n\n") # some spacing for clarity
-            return selection
+        except AttributeError:
+            pass  # not all platforms supply flush()
 
-        except ValueError:
-            print("Invalid input. Please enter a number.")
-
+        print("\n")
+        if space_separated:
+            return tuple(indices)
+        return indices[0]
 
 
 def get_confirmation(

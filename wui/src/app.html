@@ -1,5 +1,20 @@
 <!doctype html>
 <html lang="en">
+	<script type="text/javascript" src="/eel.js"></script>
+	<script>
+		window.eel = eel;
+
+
+		// Eel function must be pre-defined before being called
+		// in Python, otherwise it will not be recognized.
+		function js_input_fn() {}
+
+		function js_output_fn() {}
+
+		eel.expose(js_input_fn)
+		eel.expose(js_output_fn)
+	</script>
+
 	<head>
 		<meta charset="utf-8" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />

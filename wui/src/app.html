@@ -13,12 +13,12 @@
 
 			// Eel function must be pre-defined before being called
 			// in Python, otherwise it will not be recognized.
-			function js_input_fn() { }
 
-			function js_output_fn() { }
 
-			eel.expose(js_input_fn)
-			eel.expose(js_output_fn)
+			let blank_fn = () => {};
+
+			eel.expose(blank_fn,"js_output_fn")
+			eel.expose(blank_fn,"js_request_input")
 		};
 
 

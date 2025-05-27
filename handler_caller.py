@@ -1,7 +1,7 @@
 from typing import Callable
 from handlers import *
 
-def handler_caller(
+def call_handler(
     name: str = "",
 ):
     # Get handler function
@@ -15,7 +15,7 @@ def handler_caller(
 
 
 """
-    Returns a lambda function that calls the handler_caller with the given name.
+    Returns a lambda function that calls the call_handler with the given name.
 """
 def get_handler(name: str) -> Callable[[], None]:
-    return lambda: handler_caller(name)
+    return lambda: call_handler(name)

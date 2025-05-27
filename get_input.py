@@ -1,6 +1,5 @@
-from re import A
 import sys
-from typing import Callable, List, Tuple, Union
+from typing import List, Tuple, Union
 from ezstools.string_tools import sort_by_similitude
 
 from io_provider import IOProvider

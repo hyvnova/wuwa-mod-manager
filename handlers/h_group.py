@@ -46,13 +46,13 @@ def group_handler() -> None:
     for idx, m in enumerate(selected_mods, 1):
         output_fn(f"[ {idx} ] {m['name']}")
 
-    output_fn("\n")
+    output_fn("---------------------------------------")
 
     # ------------- group name -------------
     while True:
-        group_name = (
-            input("Group name (leave empty to auto-generate): ").strip().lower()
-        )
+
+        output_fn("Enter a name for the group: (leave empty to auto-generate)")
+        group_name = input_fn().strip().lower()
         if not group_name:
             group_name = "-".join(sorted(set(m["name"] for m in selected_mods)))
             output_fn(f"Auto-generated group name: '{group_name}'")

@@ -1,9 +1,9 @@
 <script>
-  import ViewList from "$lib/components/ViewList.svelte";
-  import Input from "$lib/input";
   import { onMount } from "svelte";
 
+  let eel;
   let current_view = $state("list");
+  let getting_input = $state(false);
 
   /**
    * Function to handle calls from Python
@@ -15,6 +15,15 @@
    * @type {string[]}
    */
   let messages = $state([]);
+
+
+   /**
+   * @param {string} value
+   */
+   function is_spacing(value) {
+    return /^\s*$/.test(value);
+  }
+
 
   /**
    * Function to Switch the current view
@@ -41,24 +50,33 @@
 
     console.log("Eel is found, initializing...");
 
-    const eel = window.eel;
-    let input = new Input();
+    eel = window.eel;
 
     /**
      * @param {string} message
      */
     function js_output_fn(message) {
       console.log("Received message from Python:", message);
-      messages.push(message);
+
+      if (is_spacing(message)) {
+        // empty messages
+        messages = [];
+      } else {
+        messages.push(message);
+      }
     }
 
-    async function js_input_fn() {
-      console.log("Requesting input from Python");
-      return await input.read();
+    /**
+     * Called when python needs input from the user
+     * @param {string} value
+     */
+    function js_request_input() {
+      console.log("Python requested input, showing input dialog...");
+      getting_input = true;
     }
 
-    eel.expose(js_input_fn, "js_input_fn");
     eel.expose(js_output_fn, "js_output_fn");
+    eel.expose(js_request_input, "js_request_input");
 
     // Listeners de teclado, ahora correctamente dentro de onMount (solo en cliente)
     window.addEventListener("keydown", (event) => {
@@ -72,11 +90,21 @@
     });
 
     call_handler = (name) => {
-      eel.call_handler(name);
+      // Empty messages array
+      messages = [];
+
+      eel.call_handler(name.toLowerCase());
     };
+
+    // Tells python IO functions are ready
+    // eel.setup_io()
 
     switch_view("list");
   });
+
+ 
+
+  let options = ["List", "Install", "Delete", "Toggle", "Group", "Rebuild"];
 </script>
 
 <main
@@ -148,21 +176,20 @@
         </h2>
         <hr />
         <ul>
-          <li
-            class="text-center font-serif block py-2 px-5 rounded-lg mb-2 text-gray-200 hover:bg-[#282c34] hover:text-white transition-colors font-light"
-          >
-            List
-          </li>
-          <li
-            class="text-center font-serif block py-2 px-5 rounded-lg mb-2 text-gray-200 hover:bg-[#282c34] hover:text-white transition-colors font-light"
-          >
-            Add
-          </li>
-          <li
-            class="text-center font-serif block py-2 px-5 rounded-lg text-gray-200 hover:bg-[#282c34] hover:text-white transition-colors font-light"
-          >
-            Remove
-          </li>
+          {#each options as option, i}
+            <li
+              class="text-center font-serif block py-2 px-5 rounded-lg mb-2 text-gray-200 hover:bg-[#282c34] hover:text-white transition-colors font-light"
+              class:mb-2={i < options.length - 1}
+            >
+              <button
+                class="w-full h-full bg-transparent border-none text-inherit font-inherit"
+                style="outline: none; cursor: pointer;"
+                onclick={() => call_handler(option)}
+              >
+                {option}
+              </button>
+            </li>
+          {/each}
         </ul>
       {:else}
         <div class=" flex flex-col items-center justify-center h-full">
@@ -177,8 +204,7 @@
 
   <!-- Main content area -->
   <section
-    class="content bg-[#232526] p-8 rounded-xl shadow-xl flex flex-col"
-    style="min-height: 0;"
+    class="content bg-[#232526] p-8 rounded-xl shadow-xl flex flex-col flex-1 overflow-hidden"
     aria-label="Main content"
   >
     <h1 class="text-3xl font-serif font-bold mb-3 text-gray-100 tracking-tight">
@@ -192,8 +218,38 @@
       <span class="italic text-indigo-300">Sucker.</span>
     </p>
 
-    {#if current_view === "list"}
-      <ViewList {messages} {toggleSidebar} {sidebarOpen} />
+    <div
+      class="display flex-1 overflow-y-auto bg-gradient-to-br from-[#232526] to-[#2c2f34] p-6 rounded-lg shadow-md flex flex-col items-center border border-gray-700"
+    >
+      {#each messages as message}
+          <div
+            class="message typing-effect
+        min-h-[30px]
+        px-4 py-2
+        bg-[#232526] text-gray-200
+        font-mono text-lg
+        shadow-sm
+        border-x border-gray-700
+        max-w-xl w-full text-center"
+          >
+            {message}
+          </div>
+      {/each}
+    </div>
+
+    {#if getting_input}
+      <input
+        type="text"
+        class="input mt-4 w-full max-w-md bg-[#2c2f34] text-gray-200 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+        placeholder="Type your input here..."
+        onkeydown={(e) => {
+          if (e.key === "Enter") {
+            eel.py_get_input(e.target.value);
+            getting_input = false;
+          }
+        }}
+        autofocus
+      />
     {/if}
   </section>
 </main>

@@ -33,7 +33,7 @@
 .typing-effect {
     border-right: 2px solid #fff;
     animation:
-        typing 1.5s steps(40, end) forwards,
+        typing 0.7s steps(40, end) forwards,
         blink 3s ease-in-out infinite;
     width: 0;
 }
@@ -42,9 +42,9 @@
 :root {
     --bg: #181a1b;
     --fg: #e0e0e0;
-    --primary: #32ffd2;
-    --accent: #232629;
-    --border: #262a2d;
+    --primary: oklch(87% 0.065 274.039);
+    --accent: oklch(92% 0.045 274.039); /* slightly lighter primary */
+    --border: oklch(67% 0.065 274.039); /* darker primary */
 }
 
 /* --- SCROLLBAR: Minimal, Classy, Gentle --- */
@@ -55,7 +55,7 @@
 }
 
 ::-webkit-scrollbar-thumb {
-    background: linear-gradient(120deg, #262a2d 20%, #32ffd2 80%);
+    background: linear-gradient(120deg, #262a2d 20%, var(--primary), 80%);
     border-radius: 8px;
     min-height: 40px;
     border: 2px solid var(--bg);
@@ -63,7 +63,7 @@
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(120deg, #32ffd2 20%, #262a2d 80%);
+    background: linear-gradient(120deg, var(--border), 20%, #262a2d 80%);
 }
 
 ::-webkit-scrollbar-track {
@@ -73,7 +73,7 @@
 /* For Firefox */
 * {
     scrollbar-width: thin;
-    scrollbar-color: #32ffd2 #1c1d1f;
+    scrollbar-color: var(--primary) #1c1d1f;
 }
 
 /* For Mac OS overlay scrollbar (force contrast) */

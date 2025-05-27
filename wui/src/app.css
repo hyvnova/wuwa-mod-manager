@@ -1,1 +1,91 @@
 @import 'tailwindcss';
+
+.message {
+    font-family: "DotGothic16", monospace;
+    overflow: hidden;
+    white-space: pre-wrap;
+    display: inline-block;
+    /* Optional: background and border for clarity */
+}
+
+@keyframes typing {
+    from {
+        width: 0;
+    }
+
+    to {
+        width: 100%;
+    }
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        border-color: transparent;
+    }
+
+    50% {
+        border-color: #fff;
+    }
+}
+
+.typing-effect {
+    border-right: 2px solid #fff;
+    animation:
+        typing 1.5s steps(40, end) forwards,
+        blink 3s ease-in-out infinite;
+    width: 0;
+}
+
+
+:root {
+    --bg: #181a1b;
+    --fg: #e0e0e0;
+    --primary: #32ffd2;
+    --accent: #232629;
+    --border: #262a2d;
+}
+
+/* --- SCROLLBAR: Minimal, Classy, Gentle --- */
+/* For Chrome, Edge, Safari (Webkit) */
+::-webkit-scrollbar {
+    width: 8px;
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(120deg, #262a2d 20%, #32ffd2 80%);
+    border-radius: 8px;
+    min-height: 40px;
+    border: 2px solid var(--bg);
+    transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(120deg, #32ffd2 20%, #262a2d 80%);
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* For Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #32ffd2 #1c1d1f;
+}
+
+/* For Mac OS overlay scrollbar (force contrast) */
+@media (pointer: fine) and (hover: hover) {
+    html {
+        scrollbar-gutter: stable both-edges;
+    }
+}
+
+/* For touch devices, keep it subtle */
+@media (hover: none) {
+    ::-webkit-scrollbar {
+        display: none;
+    }
+}

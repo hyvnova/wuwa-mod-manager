@@ -1,16 +1,17 @@
 import shutil
-from typing import Callable
-from ..core import ACTIVE_MODS_FOLDER, SAVED_MODS_FOLDER, get_modlist, save_modlist
-from ..get_input import get_menu_input
+
+from io_provider import IOProvider
+from core import ACTIVE_MODS_FOLDER, SAVED_MODS_FOLDER, get_modlist, save_modlist
+from get_input import get_menu_input
 
 
 def delete_handler(
-    input_fn: Callable[[], str] = input,
-    output_fn: Callable[[str], None] = print,
 ) -> None:
     """
     Removes selected mods entirely (files & entry).
     """
+
+    output_fn = IOProvider().get_output()
 
     modlist = get_modlist()
     if not modlist:
@@ -18,8 +19,6 @@ def delete_handler(
         return
 
     sel = get_menu_input(
-        input_fn=input_fn,
-        output_fn=output_fn,
         prompt="Indexes to delete: ",
         zero_option_text="[ 0 ] All ",
         options=[m["name"] for m in modlist],

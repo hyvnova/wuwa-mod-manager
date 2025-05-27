@@ -3,9 +3,9 @@ Web User Interface (WUI) for the WuWa Mod Manager.
 """
 
 import os
+import shutil
 import eel
 from pathlib import Path
-import importlib
 
 SVELTE_PATH = Path(__file__).parent / "wui"
 
@@ -35,6 +35,11 @@ def call_handler(handler_name: str) -> None:
         eel.js_input_fn,
         eel.js_output_fn,
     )
+
+# delete build directory if it exists
+if (SVELTE_PATH / "build").exists():
+    shutil.rmtree(SVELTE_PATH / "build")
+
 
 # build svelte app
 os.system("cd wui && npm run build")

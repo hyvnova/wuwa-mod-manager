@@ -1,15 +1,14 @@
-from typing import Callable
 from core import get_modlist
+from io_provider import IOProvider
 
 
-def list_handler(
-    input_fn: Callable[[], str] = input,
-    output_fn: Callable[[str], None] = print,
-) -> None:
+def list_handler() -> None:
     """
     Prints a BEAUTIFUL table of installed mods.
     Each mod has an index, name, and status (enabled/disabled).
     """
+
+    output_fn = IOProvider().get_output()
 
     modlist = get_modlist()
 

@@ -1,4 +1,8 @@
-from core import ACTIVE_MODS_FOLDER, SAVED_MODS_FOLDER, get_modlist, save_modlist, FolderValidation
+from pathlib import Path
+import shutil
+from typing import Generator
+from core import ACTIVE_MODS_FOLDER, SAVED_MODS_FOLDER, ModList, ModObject, get_modlist, is_valid_mod_folder, save_modlist, FolderValidation
+from io_provider import IOProvider
 
 
 def restore_entry_from_paths(
@@ -17,6 +21,8 @@ def restore_entry_from_paths(
         to avoid duplicated resources.
     """
 
+    output_fn = IOProvider().get_output()
+
     # helper: a live view of every path registered under a multi-path mod
     def _multipath_set(exclude: str | None = None) -> set[str]:
         return {
@@ -29,7 +35,7 @@ def restore_entry_from_paths(
     def _handle_mod_restore(name: str, path: str) -> None:
         # conflict check against existing multi-mods
         if path in _multipath_set():
-            print(
+            output_fn(
                 f"\t[ - ] Skipping {name}: "
                 "its folder already belongs to another multi-path mod."
             )
@@ -40,39 +46,39 @@ def restore_entry_from_paths(
         if existing:
             if existing["path"] != [path]:
                 existing["path"] = [path]
-                print(f"\t[ / ] Updated {name} paths.")
+                output_fn(f"\t[ / ] Updated {name} paths.")
         else:
             modlist.append(ModObject(name=name, path=[path], enabled=False))
-            print(f"\t[ + ] Added {name}.")
+            output_fn(f"\t[ + ] Added {name}.")
 
         if save and not (SAVED_MODS_FOLDER / name).exists():
             shutil.copytree(entry, SAVED_MODS_FOLDER / name)
-            print(f"\t[ + ] Copied {name} to SavedMods folder.")
+            output_fn(f"\t[ + ] Copied {name} to SavedMods folder.")
 
     for entry in paths_iter:
         # ─── reject plain files ─────────────────────────────────────────────
         if not entry.is_dir():
             if entry.is_file() and entry.name == "modlist.json":
                 continue
-            print(f"\t[ ! ] {entry.name} is not a directory and SHOULD NOT BE HERE")
+            output_fn(f"\t[ ! ] {entry.name} is not a directory and SHOULD NOT BE HERE")
             if delete_invalid:
                 shutil.rmtree(entry, ignore_errors=True)
-                print(f"\t[ + ] Deleted {entry.name}.")
+                output_fn(f"\t[ + ] Deleted {entry.name}.")
             continue
 
         # ─── classify the candidate folder ─────────────────────────────────
         status, mod_name, mod_paths = is_valid_mod_folder(entry)
 
         if status == FolderValidation.NOT_MOD:
-            print(f"\t[ ! ] {entry.name} is not a valid mod and SHOULD NOT BE HERE")
+            output_fn(f"\t[ ! ] {entry.name} is not a valid mod and SHOULD NOT BE HERE")
             if delete_invalid:
                 shutil.rmtree(entry, ignore_errors=True)
-                print(f"\t[ + ] Deleted {entry.name}.")
+                output_fn(f"\t[ + ] Deleted {entry.name}.")
             continue
 
         # ─── Ensure no duplicate entries ────────────────────────────────
         if any(m["name"] == mod_name for m in modlist):
-            # print(f"\t[ ! ] {mod_name} already exists in modlist.json, skipping.")
+            # output_fn(f"\t[ ! ] {mod_name} already exists in modlist.json, skipping.")
             continue
 
         # ─── SINGLE-MOD case ───────────────────────────────────────────────
@@ -87,7 +93,7 @@ def restore_entry_from_paths(
                 _handle_mod_restore(mod_name, mod_path)
 
 
-def rebuild_handler(\
+def rebuild_handler(
         delete_invalid: bool = False,  # If true, delete invalid mods and files
     ) -> None:
     """
@@ -100,11 +106,13 @@ def rebuild_handler(\
     Meaning mods that are present in other mods paths
     """
 
-    print("- Rebuild modlist -".center(40, "="))
-    print(
+    output_fn = IOProvider().get_output()
+
+    output_fn("- Rebuild modlist -".center(40, "="))
+    output_fn(
         "This will make sure all valid mods in SavedMods or Mods folder are registered in modlist.json."
     )
-    print("\n\n")
+    output_fn("\n\n")
 
     modlist = get_modlist()
 
@@ -136,11 +144,11 @@ def rebuild_handler(\
     }
 
     for name in to_delete:
-        print(f"\t[ - ] Removing {name} (path already covered by a multi-mod).")
+        output_fn(f"\t[ - ] Removing {name} (path already covered by a multi-mod).")
 
     # mutate in place to keep external references valid
     modlist[:] = [m for m in modlist if m["name"] not in to_delete]
 
     save_modlist(modlist)
-    print(f"[ + ] Restored mods from SavedMods and Mods folders.")
+    output_fn(f"[ + ] Restored mods from SavedMods and Mods folders.")
 

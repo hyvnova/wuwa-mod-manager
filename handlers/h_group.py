@@ -1,6 +1,8 @@
-from typing import List
-from ..core import ModList, ModObject, get_modlist, save_modlist
-from ..get_input import get_menu_input
+from typing import Callable, List
+
+from io_provider import IOProvider
+from core import ModList, ModObject, get_modlist, save_modlist
+from get_input import get_menu_input
 
 
 def group_handler() -> None:
@@ -8,15 +10,18 @@ def group_handler() -> None:
     Combine several installed mods into a single “meta-mod” entry.
     """
 
-    print("- Create a group -".center(40, "="))
-    print(
+    (input_fn, output_fn) = IOProvider().get_io()
+
+    output_fn("- Create a group -".center(40, "="))
+    output_fn(
         "This will create a group of mods, allowing you to toggle them all at once.\n"
     )
 
     modlist: ModList = get_modlist()
     if not modlist:
-        print("No mods installed.")
-        return go_back()
+        output_fn("No mods installed.")
+        return 
+
 
     sel = get_menu_input(
         prompt="Indexes of mods to group (space-separated): ",
@@ -28,20 +33,20 @@ def group_handler() -> None:
 
     if 0 in sel:
         # placeholder for future smart-group logic
-        print("Auto-select not implemented yet.")
-        return go_back()
+        output_fn("Auto-select not implemented yet.")
+        return
 
     selected_mods = [modlist[idx - 1] for idx in sel if 1 <= idx <= len(modlist)]
     if not selected_mods:
-        print("No valid mods selected.")
-        return go_back()
+        output_fn("No valid mods selected.")
+        return
 
-    print("\n")
-    print("- Selected -".center(20, " "))
+    output_fn("\n")
+    output_fn("- Selected -".center(20, " "))
     for idx, m in enumerate(selected_mods, 1):
-        print(f"[ {idx} ] {m['name']}")
+        output_fn(f"[ {idx} ] {m['name']}")
 
-    print("\n")
+    output_fn("\n")
 
     # ------------- group name -------------
     while True:
@@ -50,9 +55,9 @@ def group_handler() -> None:
         )
         if not group_name:
             group_name = "-".join(sorted(set(m["name"] for m in selected_mods)))
-            print(f"Auto-generated group name: '{group_name}'")
+            output_fn(f"Auto-generated group name: '{group_name}'")
         if any(m["name"] == group_name for m in modlist):
-            print(f"'{group_name}' already exists.")
+            output_fn(f"'{group_name}' already exists.")
             continue
         break
 
@@ -70,5 +75,5 @@ def group_handler() -> None:
     modlist.append(ModObject(name=group_name, path=group_paths, enabled=False))
     save_modlist(modlist)
 
-    print(f"\t[ + ] Created group '{group_name}' with {len(selected_mods)} mods.")
-    go_back()
+    output_fn(f"\t[ + ] Created group '{group_name}' with {len(selected_mods)} mods.")
+

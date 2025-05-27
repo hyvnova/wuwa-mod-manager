@@ -10,37 +10,41 @@ import os
 import sys
 from typing import Callable, Dict
 from core import ensure_directories
-from cui_core.shared import go_back
-from handlers import *
+from handler_caller import get_handler
+from io_provider import IOProvider
 from str_sort import sort_by_similitude
 
 
-    
-    
+IOProvider().set_io(
+    input_fn=input,
+    output_fn=print,
+)
+
+
 # ────────────────────────────
 #  CLI loop
 # ────────────────────────────
 MENU: Dict[int, tuple[str, Callable[[], None]]] = {
     0: ("Exit", lambda: sys.exit(0)),
-    1: ("Install", install_handler),
-    2: ("Delete", delete_handler),
-    3: ("Toggle", toggle_handler),  # ← merged Enable/Disable
-    4: ("List", list_handler),
-    5: ("Create Group", group_handler),
-    6: ("Rebuild", rebuild_handler),
+    1: ("Install", get_handler("install")),
+    2: ("Delete", get_handler("delete")),
+    3: ("Toggle", get_handler("toggle")),
+    4: ("List", get_handler("list")),
+    5: ("Create Group", get_handler("create_group")),
+    6: ("Rebuild", get_handler("rebuild")),
 }
 
 
 def main() -> None:
     ensure_directories()
-    rebuild_handler()  # Rebuild modlist.json on startup
+    get_handler("rebuild")()  # Rebuild modlist.json on startup
 
     option_names = [name.lower() for name, _ in MENU.values()]
 
     while True:
         os.system("cls" if os.name == "nt" else "clear")
 
-        print("\nWuWa Mod Manager".center(30, "="))
+        print("WuWa Mod Manager".center(30, "="))
 
         for i, n in enumerate(option_names):
             print(f"[ {i} ] {n}")
@@ -58,11 +62,12 @@ def main() -> None:
 
         if idx not in MENU:
             print("Invalid selection.")
-            go_back()
             continue
 
         print("\n")
         MENU[idx][1]()
+        # wait for user to press Enter before continuing
+        input("\nPress Enter to continue...")
 
 
 if __name__ == "__main__":

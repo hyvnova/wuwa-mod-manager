@@ -32,23 +32,17 @@ MODLIST Structure:
 
 """
 
+from enum import Enum
 import json
 import os
-import sys
 from pathlib import Path
-from typing import Callable, Dict, List, TypedDict
+from typing import  List, Tuple, TypedDict
+from typing import TypedDict, List
 
 
 # ────────────────────────────
 #  Paths & constants
 # ────────────────────────────
-from typing import TypedDict, List
-from path import Path
-from zmq import Enum
-
-from str_sort import sort_by_similitude
-
-
 DOWNLOADS_FOLDER = Path(r"C:\Users\Hyvnt\Downloads")
 SAVED_MODS_FOLDER = Path(r"C:\Users\Hyvnt\AppData\Roaming\XXMI Launcher\WWMI\SavedMods")
 ACTIVE_MODS_FOLDER = Path(r"C:\Users\Hyvnt\AppData\Roaming\XXMI Launcher\WWMI\Mods")
@@ -114,5 +108,54 @@ def ensure_directories() -> None:
     if not MODLIST_FILE.exists():
         MODLIST_FILE.write_text("[]", encoding="utf-8")
 
+# - ────────────────────────────
+#  Folder validation
+# - ────────────────────────────
+def is_valid_mod_folder(folder: Path) -> Tuple[FolderValidation, str, List[Path]]:
+    """
+    Returns a tuple of:
+    0. FolderValidation
+    1. Name of the mod (name of root folder)
+    2. List of paths that contain .ini files (if SINGLE_MOD or MULTI_MODS)
 
+    Rule:
+    - If the current folder contains one or more .ini files, it's SINGLE_MOD (collect all descendant subpaths with .ini).
+    - If not, but it contains several subfolders, and those subfolders contain .ini files, it's MULTI_MODS.
+    - If there are no .ini files anywhere relevant, it's NOT_MOD.
+    """
+    if not folder.is_dir():
+        return (FolderValidation.NOT_MOD, "", [])
 
+    root = folder
+    while True:
+        # Case 1. The root contains a .ini file
+        # If so this is a single mod
+        if any(f.is_file() and f.suffix == ".ini" for f in root.iterdir()):
+            return (FolderValidation.SINGLE_MOD, root.name, [root])
+
+        # Case 2. There is only 1 subfolder.
+        subdirs = [d for d in root.iterdir() if d.is_dir()]
+
+        # Move to the next subfolder if there is only one
+        if len(subdirs) == 1:
+            root = subdirs[0]
+            continue
+
+        # Case 3. There are multiple subfolders
+        # If some of the subfolders contain .ini files, this is a multi-mods folder
+        paths: List[Path] = []
+        if len(subdirs) > 1:
+            for sub in subdirs:
+                if any(f.is_file() and f.suffix == ".ini" for f in sub.iterdir()):
+                    paths.append(sub)
+
+            # If no valid subfolders were found, this is not a mod folder
+            if not paths:
+                return (FolderValidation.NOT_MOD, "", [])
+
+            # If there is only one valid subfolder, this is a single mod folder
+            if len(paths) == 1:
+                return (FolderValidation.SINGLE_MOD, paths[0].name, paths)
+
+            # If there are multiple valid subfolders, this is a multi-mods folder
+            return (FolderValidation.MULTI_MODS, "", paths)

@@ -2,6 +2,7 @@ from pathlib import Path
 import shutil
 from core import ACTIVE_MODS_FOLDER, SAVED_MODS_FOLDER, ModObject, get_modlist, save_modlist
 from get_input import get_menu_input
+from io_provider import IOProvider
 
 
 def _activate_mod(mod: ModObject) -> None:
@@ -21,11 +22,12 @@ def toggle_handler() -> None:
     """
     Toggle (enable ⇄ disable) selected mods.
     """
+    output_fn = IOProvider().get_output()
 
     modlist = get_modlist()
     if not modlist:
-        print("No mods to toggle.")
-        return go_back()
+        output_fn("No mods to toggle.")
+        return
 
     sel = get_menu_input(
         prompt="Indexes to toggle (space-separated): ",
@@ -45,10 +47,9 @@ def toggle_handler() -> None:
 
         if mod["enabled"]:
             _activate_mod(mod)
-            print(f"\t[ + ] Enabled  {mod['name']}")
+            output_fn(f"\t[ + ] Enabled  {mod['name']}")
         else:
             shutil.rmtree(ACTIVE_MODS_FOLDER / mod["name"], ignore_errors=True)
-            print(f"\t[ - ] Disabled {mod['name']}")
+            output_fn(f"\t[ - ] Disabled {mod['name']}")
 
     save_modlist(modlist)
-    go_back()

@@ -3,10 +3,10 @@ import sys
 from typing import Callable, List, Tuple, Union
 from ezstools.string_tools import sort_by_similitude
 
+from io_provider import IOProvider
+
 
 def get_menu_input(
-    input_fn: Callable[[], str],
-    output_fn: Callable[[str], None],
     zero_option_text: str,
     prompt: str,
     options: List[str],
@@ -28,6 +28,8 @@ def get_menu_input(
     tuple[int, ...]
         many indexes in input order with duplicates removed
     """
+
+    (input_fn, output_fn) = IOProvider().get_io()
 
     output_fn(zero_option_text)
     for idx, opt in enumerate(options, start=1):
@@ -90,15 +92,14 @@ def get_menu_input(
 
 
 def get_confirmation(
-    input_fn: Callable[[], str] = input,
-    output_fn: Callable[[str], None] = print,
-
     prompt: str = "Are you sure? [y/n]: ",
     default: str = "n",
 ) -> bool:
     """
     Gets a confirmation from the user
     """
+    (input_fn, output_fn) = IOProvider().get_io()
+
     while True:
         output_fn(prompt)
         response = input_fn().strip().lower()

@@ -1,5 +1,5 @@
 # Hyvnt's WuWa Mod Manager
-A stupid piece of software, by stupid people, enjoy the suffering. Sucker.
+A stupid piece of software, fstupid people, enjoy the suffering. Sucker.
 
 [ ! ] Warning: WuWa does permit allow mods, use at your own risk.
     *As far as I understand, as long as you don't use cheats, automation tools or similar, you should be fine.*

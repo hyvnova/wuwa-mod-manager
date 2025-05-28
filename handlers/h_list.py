@@ -13,7 +13,7 @@ def list_handler() -> None:
     modlist = get_modlist()
 
     if not modlist:
-        output_fn("No mods installed.")
+        output_fn("No mods installed. If there are mods in the SavedMods folder, run 'Rebuild' to add them.")
         return
 
     # Settings for column widths

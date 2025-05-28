@@ -1,154 +1,154 @@
 from pathlib import Path
 import shutil
-from typing import Generator
-from core import ACTIVE_MODS_FOLDER, SAVED_MODS_FOLDER, ModList, ModObject, get_modlist, is_valid_mod_folder, save_modlist, FolderValidation
+import time
+from typing import Iterable, Generator
+
+from core import (
+    ACTIVE_MODS_FOLDER,
+    SAVED_MODS_FOLDER,
+    ModList,
+    ModObject,
+    FolderValidation,
+    get_modlist,
+    is_valid_mod_folder,
+    save_modlist,
+)
 from io_provider import IOProvider
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Helpers
+# ────────────────────────────────────────────────────────────────────────────────
+
+
+def _log_copy(src: Path, dest: Path, output) -> None:
+    """Copy a folder while logging start/finish so hangs are obvious."""
+    output(f"\t[ → ] Copying {src.name} to SavedMods…")
+    t0 = time.perf_counter()
+    shutil.copytree(src, dest)
+    output(f"\t[ ✓ ] Copied in {time.perf_counter() - t0:,.1f}s.")
+
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Core restore logic
+# ────────────────────────────────────────────────────────────────────────────────
 
 
 def restore_entry_from_paths(
     modlist: ModList,
-    paths_iter: Generator[Path, None, None],
+    paths: Iterable[Path],
+    *,
     delete_invalid: bool = False,
-    save: bool = True,  # If true, copy mod contents to SavedMods if not there already
+    save_to_savedmods: bool,
 ) -> None:
     """
-    Scan *paths_iter* for valid mods and ensure `modlist` contains them.
+    Scan *paths* for valid mods and make sure they’re present in *modlist*.
 
-    EXTRA RULE (new):
-        When adding or updating a mod we first check whether **any** of its
-        folder paths are already referenced by another **multi-path** mod.
-        If so, the new entry is *skipped* (or its conflicting paths are pruned)
-        to avoid duplicated resources.
+    The “no-duplicate-folder” rule:
+        If a folder is already referenced by **any** multi-mod,
+        another mod cannot claim that same folder.
     """
 
-    output_fn = IOProvider().get_output()
+    output = IOProvider().get_output()
 
-    # helper: a live view of every path registered under a multi-path mod
-    def _multipath_set(exclude: str | None = None) -> set[str]:
-        return {
-            p
-            for m in modlist
-            if len(m["path"]) > 1 and m["name"] != exclude
-            for p in m["path"]
-        }
-
-    def _handle_mod_restore(name: str, path: str) -> None:
-        # conflict check against existing multi-mods
-        if path in _multipath_set():
-            output_fn(
-                f"\t[ - ] Skipping {name}: "
-                "its folder already belongs to another multi-path mod."
-            )
-            return
-
-        existing = next((m for m in modlist if m["name"] == name), None)
-
-        if existing:
-            if existing["path"] != [path]:
-                existing["path"] = [path]
-                output_fn(f"\t[ / ] Updated {name} paths.")
-        else:
-            modlist.append(ModObject(name=name, path=[path], enabled=False))
-            output_fn(f"\t[ + ] Added {name}.")
-
-        if save and not (SAVED_MODS_FOLDER / name).exists():
-            shutil.copytree(entry, SAVED_MODS_FOLDER / name)
-            output_fn(f"\t[ + ] Copied {name} to SavedMods folder.")
-
-    for entry in paths_iter:
-        # ─── reject plain files ─────────────────────────────────────────────
-        if not entry.is_dir():
-            if entry.is_file() and entry.name == "modlist.json":
-                continue
-            output_fn(f"\t[ ! ] {entry.name} is not a directory and SHOULD NOT BE HERE")
-            if delete_invalid:
-                shutil.rmtree(entry, ignore_errors=True)
-                output_fn(f"\t[ + ] Deleted {entry.name}.")
-            continue
-
-        # ─── classify the candidate folder ─────────────────────────────────
-        status, mod_name, mod_paths = is_valid_mod_folder(entry)
-
-        if status == FolderValidation.NOT_MOD:
-            output_fn(f"\t[ ! ] {entry.name} is not a valid mod and SHOULD NOT BE HERE")
-            if delete_invalid:
-                shutil.rmtree(entry, ignore_errors=True)
-                output_fn(f"\t[ + ] Deleted {entry.name}.")
-            continue
-
-        # ─── Ensure no duplicate entries ────────────────────────────────
-        if any(m["name"] == mod_name for m in modlist):
-            # output_fn(f"\t[ ! ] {mod_name} already exists in modlist.json, skipping.")
-            continue
-
-        # ─── SINGLE-MOD case ───────────────────────────────────────────────
-        if status == FolderValidation.SINGLE_MOD:
-            _handle_mod_restore(mod_name, str(mod_paths[0]))
-            continue
-
-        # ─── MULTI-MODS case ───────────────────────────────────────────────
-        elif status == FolderValidation.MULTI_MODS:
-            for path in mod_paths:
-                mod_path = str(path)
-                _handle_mod_restore(mod_name, mod_path)
-
-
-def rebuild_handler(
-        delete_invalid: bool = False,  # If true, delete invalid mods and files
-    ) -> None:
-    """
-    Create modlist.json from SavedMods folder or Mods folder.
-
-    This is useful for the case in which either mod folder change outside of the manager,
-    or the modlist.json gets corrupted.
-
-    Also ensures there are no duplicate entries in modlist.json.
-    Meaning mods that are present in other mods paths
-    """
-
-    output_fn = IOProvider().get_output()
-
-    output_fn("- Rebuild modlist -".center(40, "="))
-    output_fn(
-        "This will make sure all valid mods in SavedMods or Mods folder are registered in modlist.json."
-    )
-    output_fn("\n\n")
-
-    modlist = get_modlist()
-
-    # Check if SavedMods folder has valid mods
-    saved_mods = SAVED_MODS_FOLDER.glob("*")
-
-    if any(saved_mods):
-        restore_entry_from_paths(
-            modlist, SAVED_MODS_FOLDER.glob("*"), delete_invalid=delete_invalid
-        )
-
-    active_mods = ACTIVE_MODS_FOLDER.glob("*")
-
-    if any(active_mods):
-        restore_entry_from_paths(
-            modlist, ACTIVE_MODS_FOLDER.glob("*"), delete_invalid=delete_invalid
-        )
-
-    # collect every path that lives in a multi-path entry
-    multi_paths: set[str] = {
+    # Build live view of multi-mod folders; keep it updated as we mutate
+    multipath_paths: set[str] = {
         p for m in modlist if len(m["path"]) > 1 for p in m["path"]
     }
 
-    # single-path mods to drop
-    to_delete = {
+    for entry in paths:
+        # ─── Reject stray files ─────────────────────────────────────────────
+        if not entry.is_dir():
+            if entry.is_file() and entry.name == "modlist.json":
+                continue
+            output(f"\t[ ! ] {entry.name} is not a directory.")
+            if delete_invalid:
+                shutil.rmtree(entry, ignore_errors=True)
+                output(f"\t[ + ] Deleted {entry.name}.")
+            continue
+
+        # ─── Classify candidate folder ─────────────────────────────────────
+        status, mod_name, mod_paths = is_valid_mod_folder(entry)
+
+        if status == FolderValidation.NOT_MOD:
+            output(f"\t[ ! ] {entry.name} is not a valid mod.")
+            if delete_invalid:
+                shutil.rmtree(entry, ignore_errors=True)
+                output(f"\t[ + ] Deleted {entry.name}.")
+            continue
+
+        # ─── Ensure entry exists / update paths ────────────────────────────
+        existing = next((m for m in modlist if m["name"] == mod_name), None)
+        if not existing:
+            existing = ModObject(name=mod_name, path=[], enabled=False)
+            modlist.append(existing)
+            output(f"\t[ + ] Added {mod_name}.")
+
+        # For every discovered sub-path, apply duplicate-folder rule then add
+        for p in mod_paths:
+            p_str = str(p)
+            if p_str in multipath_paths and len(existing["path"]) == 0:
+                # Skip entire single-folder mod that clashes with a multi-mod
+                output(
+                    f"\t[ - ] Skipping {mod_name}: folder already "
+                    "belongs to another multi-path mod."
+                )
+                break
+
+            if p_str not in existing["path"]:
+                existing["path"].append(p_str)
+                if len(existing["path"]) > 1:
+                    multipath_paths.add(p_str)  # now part of a multi-mod
+
+        # ─── Copy to SavedMods if requested and not present ────────────────
+        if save_to_savedmods and not (SAVED_MODS_FOLDER / mod_name).exists():
+            _log_copy(entry, SAVED_MODS_FOLDER / mod_name, output)
+
+    output(f"\t[ + ] {len(modlist)} mods tracked so far.")
+
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Public entry point
+# ────────────────────────────────────────────────────────────────────────────────
+
+
+def rebuild_handler(*, delete_invalid: bool = True) -> None:
+    """
+    Re-create *modlist.json* from folders on disk, removing redundant entries.
+    """
+
+    output = IOProvider().get_output()
+    output("- Rebuild modlist -".center(40, "="))
+    output("This will ensure every valid mod in SavedMods or Mods is tracked.\n\n")
+
+    modlist = get_modlist()
+
+    # 1. Scan SavedMods  (no need to copy; they’re already there)
+    restore_entry_from_paths(
+        modlist,
+        SAVED_MODS_FOLDER.iterdir(),
+        delete_invalid=delete_invalid,
+        save_to_savedmods=False,
+    )
+
+    # 2. Scan active Mods  (copy any missing ones to SavedMods)
+    restore_entry_from_paths(
+        modlist,
+        ACTIVE_MODS_FOLDER.iterdir(),
+        delete_invalid=delete_invalid,
+        save_to_savedmods=True,
+    )
+
+    # 3. Purge single-mods whose folder is covered by a multi-mod
+    multipath_set = {p for m in modlist if len(m["path"]) > 1 for p in m["path"]}
+    to_drop = {
         m["name"]
         for m in modlist
-        if len(m["path"]) == 1 and m["path"][0] in multi_paths
+        if len(m["path"]) == 1 and m["path"][0] in multipath_set
     }
 
-    for name in to_delete:
-        output_fn(f"\t[ - ] Removing {name} (path already covered by a multi-mod).")
-
-    # mutate in place to keep external references valid
-    modlist[:] = [m for m in modlist if m["name"] not in to_delete]
+    for n in to_drop:
+        output(f"\t[ - ] Removing {n} (folder already in a multi-mod).")
+    modlist[:] = [m for m in modlist if m["name"] not in to_drop]
 
     save_modlist(modlist)
-    output_fn(f"[ + ] Restored mods from SavedMods and Mods folders.")
-
+    output("[ ✓ ] Rebuild complete.")

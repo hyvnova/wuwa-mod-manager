@@ -108,7 +108,7 @@
 </script>
 
 <main
-  class="grid grid-cols-[20%_1fr] gap-2 p-1 w-full"
+  class="grid grid-cols-[5%_1fr] gap-2 p-1 w-full"
   style="height: 100vh; overflow-y: auto; background: #181A1B;"
 >
   <aside class="relative" style="min-width: 0;">
@@ -238,18 +238,21 @@
     </div>
 
     {#if getting_input}
+      <div class="flex justify-center items-center w-full mt-8">
       <input
         type="text"
-        class="input mt-4 w-full max-w-md bg-[#2c2f34] text-gray-200 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+        class="input animate-breathing border-2 border-indigo-500 focus:border-pink-500 ring-2 ring-indigo-400 focus:ring-pink-400 shadow-xl mt-0 w-full max-w-md bg-[#232526] text-indigo-200 font-mono text-xl font-bold rounded-2xl px-6 py-4 focus:outline-none transition-all duration-300"
         placeholder="Type your input here..."
         onkeydown={(e) => {
-          if (e.key === "Enter") {
-            eel.py_get_input(e.target.value);
-            getting_input = false;
-          }
+        if (e.key === "Enter") {
+          eel.py_get_input(e.target.value);
+          getting_input = false;
+        }
         }}
         autofocus
       />
+      </div>
+
     {/if}
   </section>
 </main>
@@ -260,3 +263,20 @@
     rel="stylesheet"
   />
 </svelte:head>
+
+<style>
+  .animate-breathing {
+    animation: breathing 2.5s ease-in-out infinite;
+  }
+  @keyframes breathing {
+    0% {
+    border-color: #6366f1;
+    }
+    50% {
+    border-color: #6648ec;
+    }
+    100% {
+    border-color: #6366f1;
+    }
+  }
+  </style>

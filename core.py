@@ -1,3 +1,61 @@
+import os
+from pathlib import Path
+
+# ────────────────────────────
+#  Paths & constants
+# ────────────────────────────
+USER_HOME = Path.home()
+DOWNLOADS_FOLDER = USER_HOME / "Downloads"
+APPDATA_FOLDER = Path(os.getenv("APPDATA", USER_HOME / "AppData" / "Roaming"))
+
+WWMI_FOLDER = APPDATA_FOLDER / "XXMI Launcher" / "WWMI" # XXMI Mod Installer folder 
+
+SAVED_MODS_FOLDER = WWMI_FOLDER / "SavedMods" # Folder where mods are saved after installation
+ACTIVE_MODS_FOLDER = WWMI_FOLDER / "Mods" # Folder where active mods are copied to be used by the game
+MODLIST_FILE = SAVED_MODS_FOLDER / "modlist.json" # File where the list of installed mods and groups are stored
+
+
+# Debug Paths
+# print(f"{USER_HOME}")
+# print(f"{DOWNLOADS_FOLDER=}")
+# print(f"{APPDATA_FOLDER=}")
+# print(f"{SAVED_MODS_FOLDER=}")
+# print(f"{ACTIVE_MODS_FOLDER=}")
+# print(f"{MODLIST_FILE=}")
+
+# If not downloads ask user to set up where stupid path where they their stupid mods
+if not DOWNLOADS_FOLDER.exists():
+    print(
+        "[ ! ] The Downloads folder does not exist.\n"
+        "Please set up your Downloads folder in your system settings.\n",
+        "And fuck you.\n"
+    )
+
+    DOWNLOADS_FOLDER = input("Enter ABSOLUTE PATH to your Downloads folder or the Folder where you install mods: ")
+    # Assume path it's good. Profit $
+
+# If appdata doesn't exist tell user to fucking find it
+if not APPDATA_FOLDER.exists():
+    print(
+        "[ ! ] The AppData folder does not exist.\n"
+        "Please set up your AppData folder in your system settings.\n",
+        "And fuck you.\n"
+    )
+
+    APPDATA_FOLDER = input("Enter ABSOLUTE PATH to your AppData folder: ")
+    # Assume path it's good again, double profit $$
+
+# If WWMI_FOLDER does not exist, tell user to fucking install it.
+if not WWMI_FOLDER.exists():
+    print(
+        f"[ ! ] The folder {WWMI_FOLDER} does not exist.\n"
+        "Please install the XXMI Launcher first.\n"
+        "And fuck you.\n"
+        "Here's the link smartypants: https://github.com/SpectrumQT/XXMI-Launcher"
+    )
+    exit(1)
+
+
 """
 WuWa Mod Manager
 
@@ -34,19 +92,9 @@ MODLIST Structure:
 
 from enum import Enum
 import json
-import os
-from pathlib import Path
+
 from typing import  List, Tuple, TypedDict
 from typing import TypedDict, List
-
-
-# ────────────────────────────
-#  Paths & constants
-# ────────────────────────────
-DOWNLOADS_FOLDER = Path(r"C:\Users\Hyvnt\Downloads")
-SAVED_MODS_FOLDER = Path(r"C:\Users\Hyvnt\AppData\Roaming\XXMI Launcher\WWMI\SavedMods")
-ACTIVE_MODS_FOLDER = Path(r"C:\Users\Hyvnt\AppData\Roaming\XXMI Launcher\WWMI\Mods")
-MODLIST_FILE = SAVED_MODS_FOLDER / "modlist.json"
 
 
 # ────────────────────────────
@@ -108,54 +156,38 @@ def ensure_directories() -> None:
     if not MODLIST_FILE.exists():
         MODLIST_FILE.write_text("[]", encoding="utf-8")
 
+
 # - ────────────────────────────
 #  Folder validation
 # - ────────────────────────────
 def is_valid_mod_folder(folder: Path) -> Tuple[FolderValidation, str, List[Path]]:
     """
-    Returns a tuple of:
-    0. FolderValidation
-    1. Name of the mod (name of root folder)
-    2. List of paths that contain .ini files (if SINGLE_MOD or MULTI_MODS)
+    Determine whether *folder* is
+        • SINGLE_MOD   – exactly one folder (possibly nested) with a mod.ini
+        • MULTI_MODS   – two-plus sibling sub-folders each with its own mod.ini
+        • NOT_MOD      – no mod.ini discovered at all
 
-    Rule:
-    - If the current folder contains one or more .ini files, it's SINGLE_MOD (collect all descendant subpaths with .ini).
-    - If not, but it contains several subfolders, and those subfolders contain .ini files, it's MULTI_MODS.
-    - If there are no .ini files anywhere relevant, it's NOT_MOD.
+    Returns (status, representative_name, [paths_with_mod_ini])
     """
+
     if not folder.is_dir():
         return (FolderValidation.NOT_MOD, "", [])
 
-    root = folder
-    while True:
-        # Case 1. The root contains a .ini file
-        # If so this is a single mod
-        if any(f.is_file() and f.suffix == ".ini" for f in root.iterdir()):
-            return (FolderValidation.SINGLE_MOD, root.name, [root])
+    # Gather every directory that DIRECTLY contains a mod.ini file
+    mod_dirs: List[Path] = [p.parent for p in folder.rglob("mod.ini") if p.is_file()]
 
-        # Case 2. There is only 1 subfolder.
-        subdirs = [d for d in root.iterdir() if d.is_dir()]
+    if not mod_dirs:
+        # No mod.ini anywhere reachable ⇒ definitely NOT_MOD
+        return (FolderValidation.NOT_MOD, "", [])
 
-        # Move to the next subfolder if there is only one
-        if len(subdirs) == 1:
-            root = subdirs[0]
-            continue
+    # De-duplicate in case rglob found duplicates through symlinks
+    mod_dirs = list(dict.fromkeys(mod_dirs))  # preserves order
 
-        # Case 3. There are multiple subfolders
-        # If some of the subfolders contain .ini files, this is a multi-mods folder
-        paths: List[Path] = []
-        if len(subdirs) > 1:
-            for sub in subdirs:
-                if any(f.is_file() and f.suffix == ".ini" for f in sub.iterdir()):
-                    paths.append(sub)
+    if len(mod_dirs) == 1:
+        # Exactly one valid mod — name is that folder’s basename
+        mod_root = mod_dirs[0]
+        return (FolderValidation.SINGLE_MOD, mod_root.name, [mod_root])
 
-            # If no valid subfolders were found, this is not a mod folder
-            if not paths:
-                return (FolderValidation.NOT_MOD, "", [])
-
-            # If there is only one valid subfolder, this is a single mod folder
-            if len(paths) == 1:
-                return (FolderValidation.SINGLE_MOD, paths[0].name, paths)
-
-            # If there are multiple valid subfolders, this is a multi-mods folder
-            return (FolderValidation.MULTI_MODS, "", paths)
+    # >1 distinct mod.ini-bearing folders ⇒ multi-mods
+    # Use the *parent* folder’s name as representative label
+    return (FolderValidation.MULTI_MODS, folder.name, mod_dirs)

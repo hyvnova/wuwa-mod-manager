@@ -1,5 +1,7 @@
 import os
 from pathlib import Path
+from get_input import get_confirmation
+from io_provider import IOProvider
 
 # ────────────────────────────
 #  Paths & constants
@@ -12,8 +14,11 @@ WWMI_FOLDER = APPDATA_FOLDER / "XXMI Launcher" / "WWMI" # XXMI Mod Installer fol
 
 SAVED_MODS_FOLDER = WWMI_FOLDER / "SavedMods" # Folder where mods are saved after installation
 ACTIVE_MODS_FOLDER = WWMI_FOLDER / "Mods" # Folder where active mods are copied to be used by the game
-MODLIST_FILE = SAVED_MODS_FOLDER / "modlist.json" # File where the list of installed mods and groups are stored
+MODLIST_FILE = WWMI_FOLDER / "modlist.json" # File where the list of installed mods and groups are stored
 
+ALLOWED_MODS_FILE = WWMI_FOLDER / "allowed_mods.json" # Allowed folder names. Since some mods don't contain a mod.ini and intead have something like "modname.ini"
+# This file will keep track of the allowed folder names, so that the user can install mods without a mod.ini file.
+# ────────────────────────────
 
 # Debug Paths
 # print(f"{USER_HOME}")
@@ -31,7 +36,7 @@ if not DOWNLOADS_FOLDER.exists():
         "And fuck you.\n"
     )
 
-    DOWNLOADS_FOLDER = input("Enter ABSOLUTE PATH to your Downloads folder or the Folder where you install mods: ")
+    DOWNLOADS_FOLDER = Path(input("Enter ABSOLUTE PATH to your Downloads folder or the Folder where you install mods: "))
     # Assume path it's good. Profit $
 
 # If appdata doesn't exist tell user to fucking find it
@@ -42,7 +47,7 @@ if not APPDATA_FOLDER.exists():
         "And fuck you.\n"
     )
 
-    APPDATA_FOLDER = input("Enter ABSOLUTE PATH to your AppData folder: ")
+    APPDATA_FOLDER = Path(input("Enter ABSOLUTE PATH to your AppData folder: "))
     # Assume path it's good again, double profit $$
 
 # If WWMI_FOLDER does not exist, tell user to fucking install it.
@@ -109,12 +114,6 @@ class ModObject(TypedDict):
 type ModList = List[ModObject]
 
 
-class FolderValidation(Enum):
-    NOT_MOD = 0
-    SINGLE_MOD = 1
-    MULTI_MODS = 2
-
-
 # ────────────────────────────
 #  JSON helpers
 # ────────────────────────────
@@ -153,32 +152,87 @@ def save_modlist(modlist: ModList) -> None:
 def ensure_directories() -> None:
     for d in (SAVED_MODS_FOLDER, ACTIVE_MODS_FOLDER):
         os.makedirs(d, exist_ok=True)
+
     if not MODLIST_FILE.exists():
         MODLIST_FILE.write_text("[]", encoding="utf-8")
+
+    if not ALLOWED_MODS_FILE.exists():
+        ALLOWED_MODS_FILE.write_text('[]', encoding="utf-8")
 
 
 # - ────────────────────────────
 #  Folder validation
 # - ────────────────────────────
-def is_valid_mod_folder(folder: Path) -> Tuple[FolderValidation, str, List[Path]]:
+def is_valid_mod_folder(folder: Path) -> Tuple[bool, str, List[Path]]:
     """
-    Determine whether *folder* is
-        • SINGLE_MOD   – exactly one folder (possibly nested) with a mod.ini
-        • MULTI_MODS   – two-plus sibling sub-folders each with its own mod.ini
-        • NOT_MOD      – no mod.ini discovered at all
+    Determine whether *folder* is a valid mod folder.
 
     Returns (status, representative_name, [paths_with_mod_ini])
     """
 
+    output_fn = IOProvider().get_output()
+
     if not folder.is_dir():
-        return (FolderValidation.NOT_MOD, "", [])
+        output_fn(f"\t[ ! ] {folder} is not a directory.")
+        return (False, "", [])
 
     # Gather every directory that DIRECTLY contains a mod.ini file
-    mod_dirs: List[Path] = [p.parent for p in folder.rglob("mod.ini") if p.is_file()]
+
+    allowed_mods: List[str] = json.loads(ALLOWED_MODS_FILE.read_text(encoding="utf-8")) # Names of allowed mods (folder names)
+    mod_dirs: List[Path] = [] # Keeps track of directories that contain a mod.ini file, the mods
+
+    # Gather all .ini
+    for p in folder.rglob("*.ini"):
+        output_fn(f"\t[ / ] Found ini file: {p}")
+
+        # If it's not a file, skip it
+        if not p.is_file():
+            continue
+
+        file_name = p.name
+
+        # If the directory it's already in captured, skip it
+        if p.parent in mod_dirs:
+            continue
+
+        # If allowed but not in mod_dirs, add it
+        if p.parent.name in allowed_mods and p.parent not in mod_dirs:
+            mod_dirs.append(p.parent)
+
+        # If current parent dir it's a subdir of an already allowed mod, skip it
+        if any(p.parent.is_relative_to(allowed_mod) for allowed_mod in mod_dirs):
+            output_fn(
+                f"[ / ] Skipping '{p.parent.name}' as it is a subdirectory of an already allowed mod."
+            )
+            continue
+
+        # If name it's "mod.ini" add it
+        if file_name == "mod.ini":
+            mod_dirs.append(p.parent)
+            continue
+
+        # Otherwise, ask user if they want to allow this mod
+        positive_response = get_confirmation(
+            f"Note: Allowing any .ini in this folder file will include the mod. \nFound ini file '{file_name}' in '{p.parent}'. Do you want to install this mod? (y/n): ",
+            default="n"
+        )
+
+        if positive_response:
+            allowed_mods.append(p.parent.name)  # Add the folder name to allowed_mods
+            # Save updated allowed_mods
+            with ALLOWED_MODS_FILE.open("w", encoding="utf-8") as fh:
+                json.dump(allowed_mods, fh, indent=4, ensure_ascii=False)
+
+            mod_dirs.append(p.parent)
+
+            output_fn(
+                f"[ + ] Allowed mod '{p.parent.name}'"
+            )
 
     if not mod_dirs:
         # No mod.ini anywhere reachable ⇒ definitely NOT_MOD
-        return (FolderValidation.NOT_MOD, "", [])
+        output_fn(f"\t[ ! ] No valid mod.ini found in {folder}.")
+        return (False, "", [])
 
     # De-duplicate in case rglob found duplicates through symlinks
     mod_dirs = list(dict.fromkeys(mod_dirs))  # preserves order
@@ -186,8 +240,9 @@ def is_valid_mod_folder(folder: Path) -> Tuple[FolderValidation, str, List[Path]
     if len(mod_dirs) == 1:
         # Exactly one valid mod — name is that folder’s basename
         mod_root = mod_dirs[0]
-        return (FolderValidation.SINGLE_MOD, mod_root.name, [mod_root])
+        return (True, mod_root.name, [mod_root])
 
     # >1 distinct mod.ini-bearing folders ⇒ multi-mods
     # Use the *parent* folder’s name as representative label
-    return (FolderValidation.MULTI_MODS, folder.name, mod_dirs)
+    return (True, folder.name, mod_dirs)
+

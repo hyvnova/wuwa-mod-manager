@@ -33,12 +33,11 @@ def list_handler() -> None:
     output_fn("-" * total_w)
 
     for idx, m in enumerate(modlist, 1):
-        status = "Enabled" if m["enabled"] else "Disabled"
+        status = ["🔴", "🟢"][m["enabled"]]
         output_fn(
             f"{str(idx).center(idx_col_w)} | "
             f"{m['name'].center(name_col_w)} | "
             f"{status.center(status_col_w)}"
         )
-        
-    output_fn("=" * total_w)
 
+    output_fn("=" * total_w)

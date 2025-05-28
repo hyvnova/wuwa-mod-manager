@@ -11,7 +11,6 @@ from core import (
     get_modlist,
     is_valid_mod_folder,
     save_modlist,
-    FolderValidation,
 )
 from io_provider import IOProvider
 
@@ -51,7 +50,7 @@ def validate_and_collect(
     root = SAVED_MODS_FOLDER / zip_file.stem
     status, name, paths = is_valid_mod_folder(root)
 
-    if status is FolderValidation.NOT_MOD:
+    if status == False:
         output_fn(f"\t[ ! ] {zip_file.name} isn't a mod, discarding.")
         shutil.rmtree(root, ignore_errors=True)
         return

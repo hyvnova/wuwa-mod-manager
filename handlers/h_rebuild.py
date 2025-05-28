@@ -8,7 +8,6 @@ from core import (
     SAVED_MODS_FOLDER,
     ModList,
     ModObject,
-    FolderValidation,
     get_modlist,
     is_valid_mod_folder,
     save_modlist,
@@ -69,7 +68,7 @@ def restore_entry_from_paths(
         # ─── Classify candidate folder ─────────────────────────────────────
         status, mod_name, mod_paths = is_valid_mod_folder(entry)
 
-        if status == FolderValidation.NOT_MOD:
+        if status == False:
             output(f"\t[ ! ] {entry.name} is not a valid mod.")
             if delete_invalid:
                 shutil.rmtree(entry, ignore_errors=True)
@@ -77,16 +76,22 @@ def restore_entry_from_paths(
             continue
 
         # ─── Ensure entry exists / update paths ────────────────────────────
-        existing = next((m for m in modlist if m["name"] == mod_name), None)
-        if not existing:
-            existing = ModObject(name=mod_name, path=[], enabled=False)
-            modlist.append(existing)
+        mod_object = next((m for m in modlist if m["name"] == mod_name), None)
+
+        if not mod_object:
+            mod_object = ModObject(name=mod_name, path=[], enabled=False)
+            modlist.append(mod_object)
             output(f"\t[ + ] Added {mod_name}.")
+
+        # Ensure correct enable status 
+        # If we're on Mods folder, mod should be enabled
+        if save_to_savedmods and not mod_object["enabled"]:
+            mod_object["enabled"] = True
 
         # For every discovered sub-path, apply duplicate-folder rule then add
         for p in mod_paths:
             p_str = str(p)
-            if p_str in multipath_paths and len(existing["path"]) == 0:
+            if p_str in multipath_paths and len(mod_object["path"]) == 0:
                 # Skip entire single-folder mod that clashes with a multi-mod
                 output(
                     f"\t[ - ] Skipping {mod_name}: folder already "
@@ -94,9 +99,9 @@ def restore_entry_from_paths(
                 )
                 break
 
-            if p_str not in existing["path"]:
-                existing["path"].append(p_str)
-                if len(existing["path"]) > 1:
+            if p_str not in mod_object["path"]:
+                mod_object["path"].append(p_str)
+                if len(mod_object["path"]) > 1:
                     multipath_paths.add(p_str)  # now part of a multi-mod
 
         # ─── Copy to SavedMods if requested and not present ────────────────

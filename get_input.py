@@ -1,9 +1,7 @@
 import sys
 from typing import List, Tuple, Union
-from ezstools.string_tools import sort_by_similitude
-
 from io_provider import IOProvider
-
+from str_util import most_similar_option
 
 def get_menu_input(
     zero_option_text: str,
@@ -18,7 +16,7 @@ def get_menu_input(
     • If the user types **numbers** → those numbers are taken as 1-based indexes
       (0 is the special “zero option”).
     • If the user types **text** → we fuzzy-match each token against the option list
-      with ``sort_by_similitude`` and take the closest hit.
+      with ``most_similar_option`` and take the closest hit.
 
     Returns
     -------
@@ -35,13 +33,14 @@ def get_menu_input(
         output_fn(f"[ {idx} ]\t{opt}")
 
     def _match_token(token: str) -> int | None:
-        """Return 1-based index for a textual token (best fuzzy match) or None."""
+        """Return 1-based index for a textual token (best fuzzy match)"""
         token = token.strip().lower()
 
         if not token:
             return None
-        
-        best = sort_by_similitude(token, options, case_sensitive=False)[-1]
+
+        best = most_similar_option(token, options)
+        print(f"Best match for '{token}' is '{best}' which is option {options.index(best) + 1}")
         return options.index(best) + 1 if best in options else None
 
     while True:
@@ -85,8 +84,10 @@ def get_menu_input(
             pass  # not all platforms supply flush()
 
         output_fn("\n")
+        
         if space_separated:
             return tuple(indices)
+        
         return indices[0]
 
 

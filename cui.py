@@ -12,7 +12,7 @@ from typing import Callable, Dict
 from core import ensure_directories
 from handler_caller import get_handler
 from io_provider import IOProvider
-from str_sort import sort_by_similitude
+from str_util import most_similar_option
 
 
 IOProvider().set_io(
@@ -57,7 +57,7 @@ def main() -> None:
         if choice.isdigit():
             idx = int(choice)
         else:
-            match = sort_by_similitude(choice, option_names, case_sensitive=False)[-1]
+            match = most_similar_option(choice, option_names)
             idx = option_names.index(match)
 
         if idx not in MENU:

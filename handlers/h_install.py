@@ -1,5 +1,7 @@
+from operator import is_
 import os
 import shutil
+from time import sleep
 from typing import  Dict, List
 import zipfile
 from pathlib import Path
@@ -20,39 +22,72 @@ from io_provider import IOProvider
 # ────────────────────────────
 def extract_zip(
     zip_path: Path, extract_to: Path | None = None
-) -> bool:
+) -> Path:
 
     output_fn = IOProvider().get_output()
 
     target_dir = extract_to or zip_path.parent
+    extracted_path = target_dir / zip_path.stem
     try:
         with zipfile.ZipFile(zip_path) as zf:
-            zf.extractall(target_dir)
-        return True
+            zf.extractall(extracted_path)
+        return extracted_path
     except Exception as exc:
         output_fn(f"[ FATAL ] Failed to extract {zip_path.name}: {exc}")
-        return False
+        raise exc
 
 
+def collapse_to_mod_folder(path: Path) -> Path:
+    """Walk through single-child wrappers until we hit a dir with mod.ini."""
+    current = path
+    while current.is_dir():
+        if (current / "mod.ini").is_file():
+            return current
+        subdirs = [p for p in current.iterdir() if p.is_dir()]
+        if len(subdirs) != 1:  # zero OR many → let validator decide
+            return current
+        current = subdirs[0]
+    return current  # sanity fallback
 
 
-def validate_and_collect(
-        into: Dict[str, List[Path]], zip_file: Path) -> None:
-    """Extract zip → validate → populate `into` dict (mod_name -> [paths])"""
+def promote_to_root(mod_root: Path, extracted_root: Path, root_folder: Path) -> Path:
+    """
+    Move the real mod folder (`mod_root`) directly under `root_folder`
+    and nuke the temporary extraction tree.
+    Returns the final on-disk path of the mod.
+    """
+    if mod_root.parent == root_folder:
+        return mod_root  # already in the right place
 
+    dest = root_folder / mod_root.name
+    if dest.exists():
+        shutil.rmtree(dest)
+    shutil.move(str(mod_root), dest)
+
+    # clean the now-empty wrapper(s)
+    shutil.rmtree(extracted_root, ignore_errors=True)
+    return dest
+
+
+def validate_and_collect(into: Dict[str, List[Path]], zip_file: Path) -> None:
     output_fn = IOProvider().get_output()
-
     output_fn(f"\t[ / ] Checking {zip_file.name}")
 
-    if not extract_zip(zip_file, SAVED_MODS_FOLDER):
-        return
+    # 1. unzip
+    extracted_root = extract_zip(zip_file, SAVED_MODS_FOLDER)
 
-    root = SAVED_MODS_FOLDER / zip_file.stem
-    status, name, paths = is_valid_mod_folder(root)
+    # 2. find the actual mod dir
+    mod_root = collapse_to_mod_folder(extracted_root)
+
+    # 3. promote it (so v33 ends up in saved_mods, wrapper dies)
+    mod_root = promote_to_root(mod_root, extracted_root, SAVED_MODS_FOLDER)
+
+    # 4. validate
+    status, name, paths = is_valid_mod_folder(mod_root)
 
     if status == False:
         output_fn(f"\t[ ! ] {zip_file.name} isn't a mod, discarding.")
-        shutil.rmtree(root, ignore_errors=True)
+        shutil.rmtree(mod_root, ignore_errors=True)
         return
 
     into.update({name: paths})
@@ -101,7 +136,7 @@ def install_handler() -> None:
             if existing["path"] == str_paths:
                 output_fn(f"\t[ = ] {name} already present.")
             else:
-                output_fn(f"\t[ ~ ] Updating {name}")
+                output_fn(f"\t[ + ] Updating {name}")
                 existing["path"] = str_paths
             continue
 
@@ -109,4 +144,3 @@ def install_handler() -> None:
         output_fn(f"\t[ + ] Added {name}")
 
     save_modlist(modlist)
-    

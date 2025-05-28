@@ -30,7 +30,7 @@ MENU: Dict[int, tuple[str, Callable[[], None]]] = {
     2: ("Delete", get_handler("delete")),
     3: ("Toggle", get_handler("toggle")),
     4: ("List", get_handler("list")),
-    5: ("Create Group", get_handler("create_group")),
+    5: ("Create Group", get_handler("group")),
     6: ("Rebuild", get_handler("rebuild")),
 }
 

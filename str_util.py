@@ -1,18 +1,62 @@
-from typing import List
-def most_similar_option(target: str, options: List[str]) -> str:
+from typing import List, Optional
+import re
+
+# ------------------------------------------------------------
+#  Normalisation helpers
+# ------------------------------------------------------------
+_non_alnum = re.compile(r"[^a-z0-9\s]+")
+
+
+def _clean(text: str) -> str:
     """
-    Returns the most similar option to the target string from the list of options.
-    Uses a simple character matching algorithm to determine similarity.
+    Lowercase, kill punctuation, collapse spaces.
     """
-    percents = {}
-
-    # Keep a mapping from processed option to original option
-    processed_options = [opt.lower() for opt in options]
-    target_proc = target.lower()
+    return _non_alnum.sub(" ", text.lower()).split() # type: ignore
 
 
-    for orig_word, proc_word in zip(options, processed_options):
-        similar_count = sum(1 for w_char, t_char in zip(proc_word, target_proc) if w_char == t_char)
-        percents[orig_word] = (similar_count * 100) / (len(proc_word) or 1)
+def _join_tokens(tokens) -> str:
+    # Sort so word order doesn't matter (token-set ratio style)
+    return " ".join(sorted(tokens))
 
-    return max(percents, key=percents.get)
+
+
+def most_similar_option(
+    target: str, options: List[str], *, cutoff: float = 0.0
+) -> Optional[str]:
+    """
+    Return the option most similar to *target*.
+    • Uses RapidFuzz’s token_set_ratio if available (best quality / speed)
+    • Falls back to difflib SequenceMatcher.
+    • Normalises strings: case-insensitive, ignores punctuation, order-agnostic.
+
+    *cutoff* (0-100) – minimum similarity required, or None if no match.
+    """
+
+    # ----  Pre-process ------------------------------------------------------
+    tgt_norm = _join_tokens(_clean(target))
+    opts_norm = {opt: _join_tokens(_clean(opt)) for opt in options}
+
+    try:
+        # ----  RapidFuzz path ----------------------------------------------
+        from rapidfuzz import fuzz, process  # noqa: WPS433 (external import inside fn)
+
+        match, score, _ = process.extractOne(
+            tgt_norm,
+            opts_norm.values(),
+            scorer=fuzz.token_set_ratio,
+        )
+        if score < cutoff:
+            return None
+        # reverse-lookup the original option by its normalised string
+        return next(orig for orig, norm in opts_norm.items() if norm == match)
+
+    except ModuleNotFoundError:
+        # ----  Difflib fallback --------------------------------------------
+        from difflib import SequenceMatcher
+
+        def ratio(a: str, b: str) -> float:
+            return SequenceMatcher(None, a, b).ratio() * 100
+
+        scored = [(opt, ratio(tgt_norm, norm)) for opt, norm in opts_norm.items()]
+        best, best_score = max(scored, key=lambda p: p[1])
+        return best if best_score >= cutoff else None

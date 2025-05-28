@@ -1,3 +1,4 @@
+from os import rmdir
 from pathlib import Path
 import shutil
 import time
@@ -154,6 +155,53 @@ def rebuild_handler(*, delete_invalid: bool = True) -> None:
     for n in to_drop:
         output(f"\t[ - ] Removing {n} (folder already in a multi-mod).")
     modlist[:] = [m for m in modlist if m["name"] not in to_drop]
+
+    # 4. Ensure enabled status is correct
+    # If mod in ACTIVE_MODS_FOLDER, it should be enabled. Otherwise, it’s disabled.
+    for mod in modlist:
+        mod["enabled"] = (ACTIVE_MODS_FOLDER / mod["name"]).exists()
+
+    # 6. EXTREMELY PARANOID CHECK
+    # If mod path exists, but doesn't exist in SAVED_MODS_FOLDER, modify path to point to SAVED_MODS_FOLDER
+    for mod in modlist:
+
+        # This should only ever apply to single-mods, otherwise BIG FUCKING PROBLEM 
+        if not len(mod["path"]) == 1:
+            continue
+
+        mod_path = Path(mod["path"][0])
+
+        output(f"\t[ / ] PARANOID CHECK: {mod['name']} at {mod_path}")
+
+        if Path(mod_path).exists() and mod_path.parent != SAVED_MODS_FOLDER:
+            output(f"\t[ ! ] Mod path '{mod_path}' does not exist in SAVED_MODS_FOLDER, modifying...")
+        
+            # copy path to SAVED_MODS_FOLDER
+            new_path = SAVED_MODS_FOLDER / Path(mod_path).name
+            if new_path.exists():
+                output(f"\t[ ! ] {new_path} already exists, removing it first.")
+                shutil.rmtree(new_path, ignore_errors=True)    
+
+            _log_copy(Path(mod_path), new_path, output)
+
+            # Delete old mod entry if different from new path
+            if SAVED_MODS_FOLDER / mod["name"] != mod_path:
+                output(f"\t[ - ] Removing old mod entry '{mod['name']}' from SAVED_MODS_FOLDER.")
+                shutil.rmtree(SAVED_MODS_FOLDER / mod["name"], ignore_errors=True)
+
+            # If enabled, no more
+            was_enabled = mod["enabled"]
+            if mod["enabled"]:
+                shutil.rmtree(ACTIVE_MODS_FOLDER / mod["name"], ignore_errors=True)
+
+            # Modify mod to point to new path
+            mod["path"][0] = str(new_path)
+            mod["name"] = new_path.name
+
+            # Re activate if it was enabled
+            if was_enabled:
+                _log_copy(new_path, ACTIVE_MODS_FOLDER / new_path.name, output)
+
 
     save_modlist(modlist)
     output("[ ✓ ] Rebuild complete.")

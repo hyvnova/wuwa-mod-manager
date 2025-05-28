@@ -23,7 +23,7 @@ def list_handler() -> None:
     total_w = idx_col_w + name_col_w + status_col_w + 10  # spacing + dividers
 
     # Header
-    output_fn("- Installed mods -".center(total_w, "="))
+    output_fn(" Installed mods ".center(total_w, "="))
     # Table headers
     output_fn(
         f"{'Idx'.center(idx_col_w)} | "

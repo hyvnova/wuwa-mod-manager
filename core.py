@@ -14,6 +14,8 @@ WWMI_FOLDER = APPDATA_FOLDER / "XXMI Launcher" / "WWMI" # XXMI Mod Installer fol
 
 SAVED_MODS_FOLDER = WWMI_FOLDER / "SavedMods" # Folder where mods are saved after installation
 ACTIVE_MODS_FOLDER = WWMI_FOLDER / "Mods" # Folder where active mods are copied to be used by the game
+DELETED_MODS_FOLDER = WWMI_FOLDER / "DeletedMods" # Folder where deleted mods are moved to, so that they can be restored later
+
 MODLIST_FILE = WWMI_FOLDER / "modlist.json" # File where the list of installed mods and groups are stored
 
 ALLOWED_MODS_FILE = WWMI_FOLDER / "allowed_mods.json" # Allowed folder names. Since some mods don't contain a mod.ini and intead have something like "modname.ini"
@@ -95,7 +97,6 @@ MODLIST Structure:
 
 """
 
-from enum import Enum
 import json
 
 from typing import  List, Tuple, TypedDict
@@ -150,7 +151,7 @@ def save_modlist(modlist: ModList) -> None:
 #  Boot-strapping
 # ────────────────────────────
 def ensure_directories() -> None:
-    for d in (SAVED_MODS_FOLDER, ACTIVE_MODS_FOLDER):
+    for d in (SAVED_MODS_FOLDER, ACTIVE_MODS_FOLDER, DELETED_MODS_FOLDER):
         os.makedirs(d, exist_ok=True)
 
     if not MODLIST_FILE.exists():
@@ -172,9 +173,9 @@ def is_valid_mod_folder(folder: Path) -> Tuple[bool, str, List[Path]]:
 
     output_fn = IOProvider().get_output()
 
-    if not folder.is_dir():
-        output_fn(f"\t[ ! ] {folder} is not a directory.")
-        return (False, "", [])
+    # if not folder.is_dir():
+    #     output_fn(f"\t[ ! ] {folder} is not a directory.")
+    #     return (False, "", [])
 
     # Gather every directory that DIRECTLY contains a mod.ini file
 
@@ -211,9 +212,11 @@ def is_valid_mod_folder(folder: Path) -> Tuple[bool, str, List[Path]]:
             mod_dirs.append(p.parent)
             continue
 
+        output_fn("\n")
+
         # Otherwise, ask user if they want to allow this mod
         positive_response = get_confirmation(
-            f"Note: Allowing any .ini in this folder file will include the mod. \nFound ini file '{file_name}' in '{p.parent}'. Do you want to install this mod? (y/n): ",
+            f"Note: Allowing any .ini in this folder file will include the mod. \nFound ini file '{file_name}' in '{p.parent.name}'. Do you want to install this mod? (y/n): ",
             default="n"
         )
 

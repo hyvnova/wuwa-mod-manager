@@ -24,7 +24,7 @@ def py_get_input(value: str) -> None:
     Expose a Python function to the Svelte frontend.
     This function will be called from JS to send input back to Python.
     """
-    print(f"Received input from JS: {value}")
+    # print(f"Received input from JS: {value}")
     
     # Set the value and stop waiting for input
     recieved_input[0] = value
@@ -45,7 +45,7 @@ def input_fn() -> str:
     value = recieved_input[0]
     recieved_input[0] = "No input recieved"  # Reset for next input
 
-    print(f"Returning input: {value}")
+    # print(f"Returning input: {value}")
     return value
 
 
@@ -59,6 +59,9 @@ def call_handler(handler_name: str) -> None:
 
     # Some nasty validation to make sure handler_name exists, THIS IS A CRIME
     handler_name = handler_name.strip().lower().replace(" ", "_")
+
+    if handler_name == "exit":
+        quit(1)
 
     print(f"Calling handler: {handler_name}")
 

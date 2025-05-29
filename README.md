@@ -32,5 +32,9 @@ This is a shithole of project. But essentially, it is moving folders around.
 I'm assuming you're a decent human being and download your mods (zip files) in your Downloads folder. If you don't go an change that path at `core.py` file.
 I'm also assuming you installed XXMI Launcher in the default path, if you didn't, go change that too at `core.py` file. Stupid motherfucker.
 
+## ✨ Preview ✨
+![Preview Web UI](/img/web_ui.jpg)
+![Preview CLI](/img/cli.png)
+
 ## Common Issues
 None. This software is perfect. Guaranteed by Hawk Tuah girl.

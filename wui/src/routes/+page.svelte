@@ -94,6 +94,12 @@
       messages = [];
 
       eel.call_handler(name.toLowerCase());
+
+      // If quit, close the app
+      if (name.toLowerCase() === "exit") {
+        window.close();
+      }
+
     };
 
     // Tells python IO functions are ready
@@ -104,7 +110,7 @@
 
  
 
-  let options = ["List", "Install", "Delete", "Toggle", "Group", "Rebuild"];
+  let options = ["Exit", "List", "Install", "Delete", "Toggle", "Group", "Rebuild", "Download"];
 </script>
 
 <main
@@ -204,7 +210,7 @@
 
   <!-- Main content area -->
   <section
-    class="content bg-[#232526] p-8 rounded-xl shadow-xl flex flex-col flex-1 overflow-hidden"
+    class="content bg-[#232526] p-8 rounded-xl shadow-xl flex flex-col overflow-auto"
     aria-label="Main content"
   >
     <h1 class="text-3xl font-serif font-bold mb-3 text-gray-100 tracking-tight">
@@ -219,21 +225,22 @@
     </p>
 
     <div
-      class="display flex-1 overflow-y-auto bg-gradient-to-br from-[#232526] to-[#2c2f34] p-6 rounded-lg shadow-md flex flex-col items-center border border-gray-700"
+      class="overflow-y-auto flex-1 bg-gradient-to-br from-[#232526] to-[#2c2f34] p-6 rounded-lg shadow-md flex flex-col items-center border border-gray-700"
     >
       {#each messages as message}
           <div
             class="message typing-effect
         min-h-[30px]
+        h-auto
         px-4 py-2
         bg-[#232526] text-gray-200
         font-mono text-lg
         shadow-sm
         border-x border-gray-700
-        max-w-xl w-full text-center"
+        w-full text-center"
           >
             {message}
-          </div>
+        </div>
       {/each}
     </div>
 
@@ -241,7 +248,7 @@
       <div class="flex justify-center items-center w-full mt-8">
       <input
         type="text"
-        class="input animate-breathing border-2 border-indigo-500 focus:border-pink-500 ring-2 ring-indigo-400 focus:ring-pink-400 shadow-xl mt-0 w-full max-w-md bg-[#232526] text-indigo-200 font-mono text-xl font-bold rounded-2xl px-6 py-4 focus:outline-none transition-all duration-300"
+        class="input animate-breathing border-2 border-indigo-500 focus:border-pink-500 ring-2 ring-indigo-400 focus:ring-pink-400 shadow-xl mt-0 w-full max-w-md bg-[#232526] text-indigo-200 font-mono text-xl font-bold rounded-md px-6 py-4 focus:outline-none transition-all duration-300"
         placeholder="Type your input here..."
         onkeydown={(e) => {
         if (e.key === "Enter") {
@@ -270,13 +277,13 @@
   }
   @keyframes breathing {
     0% {
-    border-color: #6366f1;
+    border-color: #3e4041;
     }
     50% {
-    border-color: #6648ec;
+    border-color: #232526;
     }
     100% {
-    border-color: #6366f1;
+    border-color: #0f1214;
     }
   }
   </style>

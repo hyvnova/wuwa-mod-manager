@@ -55,4 +55,7 @@ def delete_handler(
                 shutil.rmtree(ACTIVE_MODS_FOLDER / mod["name"], ignore_errors=True)
                 modlist.remove(mod)
 
+                output_fn(f"\t[ + ] Deleted {mod['name']}.")
+
+    output_fn("\n[ + ] Deletion complete.")
     save_modlist(modlist)

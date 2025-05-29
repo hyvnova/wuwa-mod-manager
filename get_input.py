@@ -44,7 +44,7 @@ def get_menu_input(
         if not best:
             return None
         
-        _best_for_display = best.split("|")[1]
+        _best_for_display = best.split("|")[1] if "|" in best else best
 
         print(f"Best match for '{token}' is '{_best_for_display}' which is option {options.index(best) + 1}")
         return options.index(best) + 1 if best in options else None

@@ -32,6 +32,7 @@ MENU: Dict[int, tuple[str, Callable[[], None]]] = {
     4: ("List", get_handler("list")),
     5: ("Create Group", get_handler("group")),
     6: ("Rebuild", get_handler("rebuild")),
+    7: ("Download", get_handler("download")),
 }
 
 
@@ -58,6 +59,9 @@ def main() -> None:
             idx = int(choice)
         else:
             match = most_similar_option(choice, option_names)
+            if not match:
+               continue
+
             idx = option_names.index(match)
 
         if idx not in MENU:

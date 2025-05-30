@@ -14,7 +14,7 @@ SVELTE_PATH = Path(__file__).parent / "wui"
 from handlers import *
 
 
-# Not an expect, but I'm assing a list because python uses references with them which means PROFIT $$$ GOLD GOLD GOLD
+# Not an expert, but I'm using a list because python uses references with them which means PROFIT $$$ GOLD GOLD GOLD
 waiting_for_input = [True]
 recieved_input = ["No input recieved"]
 

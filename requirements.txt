@@ -1,0 +1,4 @@
+attr==0.3.2
+eel==0.18.1
+rapidfuzz==3.13.0
+Requests==2.32.3

@@ -9,6 +9,7 @@ from get_input import get_menu_input
 from core import (
     DOWNLOADS_FOLDER,
     SAVED_MODS_FOLDER,
+    ItemType,
     ModObject,
     get_modlist,
     is_valid_mod_folder,
@@ -98,14 +99,17 @@ def install_handler() -> None:
     Installs one or more .zip mods from the Downloads folder.
     """
 
+    # Get input and output functions from IOProvider
     (input_fn, output_fn) = IOProvider().get_io()
 
+    # Find all .zip files in the Downloads folder, sorted by modification time (newest first)
     zips = sorted(DOWNLOADS_FOLDER.glob("*.zip"), key=os.path.getmtime, reverse=True)
 
     if not zips:
         output_fn("No .zip files in Downloads.")
         return 
 
+    # Prompt user to select which mods to install
     sel = get_menu_input(
         zero_option_text="[ 0 ] Any valid mod",
         prompt="Indexes to install (space-separated): ",
@@ -113,10 +117,13 @@ def install_handler() -> None:
         space_separated=True,
     )
 
-    # normalise to tuple
+    # Normalize selection to a tuple
     sel = (sel,) if isinstance(sel, int) else sel
+
+    # Will hold valid mods to install {name: [paths]}
     chosen: Dict[str, List[Path]] = {}
 
+    # If user selected 0, validate and collect all zips; otherwise, only selected ones
     if 0 in sel:
         for z in zips:
             validate_and_collect(chosen, z)
@@ -128,19 +135,24 @@ def install_handler() -> None:
     output_fn(f"[ / ] {len(chosen)} valid mods found, installing…")
     modlist = get_modlist()
 
+    # Add or update mods in the modlist
     for name, paths in chosen.items():
-        existing = next((m for m in modlist if m["name"] == name), None)
+
+        # Check if the mod already exists in the modlist
+        existing: ModObject = next((m for m in modlist if m.name == name and m.type == ItemType.MOD), None) # type: ignore
         str_paths = [str(p) for p in paths]
 
         if existing:
-            if existing["path"] == str_paths:
+            if existing.path == str_paths:
                 output_fn(f"\t[ = ] {name} already present.")
             else:
                 output_fn(f"\t[ + ] Updating {name}")
-                existing["path"] = str_paths
+                existing.path = str_paths
             continue
 
-        modlist.append(ModObject(name=name, path=str_paths, enabled=False))
+        # Add new mod entry
+        modlist.append(ModObject(name=name, path=str_paths, enabled=False, date=0, gb_id=None))
         output_fn(f"\t[ + ] Added {name}")
 
+    # Save the updated modlist
     save_modlist(modlist)

@@ -7,6 +7,7 @@ from typing import Iterable, Generator
 from core import (
     ACTIVE_MODS_FOLDER,
     SAVED_MODS_FOLDER,
+    ItemType,
     ModList,
     ModObject,
     get_modlist,
@@ -19,6 +20,24 @@ from io_provider import IOProvider
 # Helpers
 # ────────────────────────────────────────────────────────────────────────────────
 
+def _get_multimod_paths(
+    modlist: ModList
+) -> set[str]:
+    """
+    Get a set of paths that are part of multi-mods.
+    Used to ensure no single-mod can claim a folder already used by a multi-mod.
+    """
+    s = set()
+    for mod in modlist:
+        if mod.type != ItemType.MOD:
+            continue
+
+        if len(mod.path) > 2:
+            continue
+
+        for p in mod.path:
+            s.add(p)
+    return s
 
 def _log_copy(src: Path, dest: Path, output) -> None:
     """Copy a folder while logging start/finish so hangs are obvious."""
@@ -51,9 +70,7 @@ def restore_entry_from_paths(
     output = IOProvider().get_output()
 
     # Build live view of multi-mod folders; keep it updated as we mutate
-    multipath_paths: set[str] = {
-        p for m in modlist if len(m["path"]) > 1 for p in m["path"]
-    }
+    multipath_paths = _get_multimod_paths(modlist)
 
     for entry in paths:
         # ─── Reject stray files ─────────────────────────────────────────────
@@ -77,22 +94,22 @@ def restore_entry_from_paths(
             continue
 
         # ─── Ensure entry exists / update paths ────────────────────────────
-        mod_object = next((m for m in modlist if m["name"] == mod_name), None)
+        mod_object: ModObject | None = next((m for m in modlist if m.name == mod_name), None) # type: ignore
 
         if not mod_object:
-            mod_object = ModObject(name=mod_name, path=[], enabled=False)
+            mod_object = ModObject(name=mod_name, path=[], enabled=False, date=0, gb_id=None)
             modlist.append(mod_object)
             output(f"\t[ + ] Added {mod_name}.")
 
         # Ensure correct enable status 
         # If we're on Mods folder, mod should be enabled
-        if save_to_savedmods and not mod_object["enabled"]:
-            mod_object["enabled"] = True
+        if save_to_savedmods and not mod_object.enabled:
+            mod_object.enabled = True
 
         # For every discovered sub-path, apply duplicate-folder rule then add
         for p in mod_paths:
             p_str = str(p)
-            if p_str in multipath_paths and len(mod_object["path"]) == 0:
+            if p_str in multipath_paths and len(mod_object.path) == 0:
                 # Skip entire single-folder mod that clashes with a multi-mod
                 output(
                     f"\t[ - ] Skipping {mod_name}: folder already "
@@ -100,9 +117,9 @@ def restore_entry_from_paths(
                 )
                 break
 
-            if p_str not in mod_object["path"]:
-                mod_object["path"].append(p_str)
-                if len(mod_object["path"]) > 1:
+            if p_str not in mod_object.path:
+                mod_object.path.append(p_str)
+                if len(mod_object.path) > 1:
                     multipath_paths.add(p_str)  # now part of a multi-mod
 
         # ─── Copy to SavedMods if requested and not present ────────────────
@@ -145,33 +162,38 @@ def rebuild_handler(*, delete_invalid: bool = True) -> None:
     )
 
     # 3. Purge single-mods whose folder is covered by a multi-mod
-    multipath_set = {p for m in modlist if len(m["path"]) > 1 for p in m["path"]}
+    multipath_set = _get_multimod_paths(modlist)
+
+    
     to_drop = {
-        m["name"]
+        m.name
         for m in modlist
-        if len(m["path"]) == 1 and m["path"][0] in multipath_set
+        if len(m.path) == 1 and m.path[0] in multipath_set # type: ignore
+        and m.type == ItemType.MOD
     }
 
     for n in to_drop:
         output(f"\t[ - ] Removing {n} (folder already in a multi-mod).")
-    modlist[:] = [m for m in modlist if m["name"] not in to_drop]
+    modlist[:] = [m for m in modlist if m.name not in to_drop]
 
     # 4. Ensure enabled status is correct
     # If mod in ACTIVE_MODS_FOLDER, it should be enabled. Otherwise, it’s disabled.
-    for mod in modlist:
-        mod["enabled"] = (ACTIVE_MODS_FOLDER / mod["name"]).exists()
+    for mod in modlist: # type: ignore
+        mod.enabled = (ACTIVE_MODS_FOLDER / mod.name).exists()
 
     # 6. EXTREMELY PARANOID CHECK
     # If mod path exists, but doesn't exist in SAVED_MODS_FOLDER, modify path to point to SAVED_MODS_FOLDER
-    for mod in modlist:
+    for mod in modlist: # type: ignore
 
         # This should only ever apply to single-mods, otherwise BIG FUCKING PROBLEM 
-        if not len(mod["path"]) == 1:
+        if not len(mod.path) == 1 or mod.type != ItemType.MOD:
             continue
 
-        mod_path = Path(mod["path"][0])
+        mod: ModObject = mod  # type: ignore
 
-        output(f"\t[ / ] PARANOID CHECK: {mod['name']} at {mod_path}")
+        mod_path = Path(mod.path[0])
+
+        output(f"\t[ / ] PARANOID CHECK: {mod.name} at {mod_path}")
 
         if Path(mod_path).exists() and mod_path.parent != SAVED_MODS_FOLDER:
             output(f"\t[ ! ] Mod path '{mod_path}' does not exist in SAVED_MODS_FOLDER, modifying...")
@@ -185,18 +207,18 @@ def rebuild_handler(*, delete_invalid: bool = True) -> None:
             _log_copy(Path(mod_path), new_path, output)
 
             # Delete old mod entry if different from new path
-            if SAVED_MODS_FOLDER / mod["name"] != mod_path:
-                output(f"\t[ - ] Removing old mod entry '{mod['name']}' from SAVED_MODS_FOLDER.")
-                shutil.rmtree(SAVED_MODS_FOLDER / mod["name"], ignore_errors=True)
+            if SAVED_MODS_FOLDER / mod.name != mod_path:
+                output(f"\t[ - ] Removing old mod entry '{mod.name}' from SAVED_MODS_FOLDER.")
+                shutil.rmtree(SAVED_MODS_FOLDER / mod.name, ignore_errors=True)
 
             # If enabled, no more
-            was_enabled = mod["enabled"]
-            if mod["enabled"]:
-                shutil.rmtree(ACTIVE_MODS_FOLDER / mod["name"], ignore_errors=True)
+            was_enabled = mod.enabled
+            if mod.enabled:
+                shutil.rmtree(ACTIVE_MODS_FOLDER / mod.name, ignore_errors=True)
 
             # Modify mod to point to new path
-            mod["path"][0] = str(new_path)
-            mod["name"] = new_path.name
+            mod.path[0] = str(new_path)
+            mod.name = new_path.name
 
             # Re activate if it was enabled
             if was_enabled:

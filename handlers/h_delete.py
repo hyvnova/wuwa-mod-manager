@@ -22,7 +22,7 @@ def delete_handler(
     sel = get_menu_input(
         prompt="Indexes to delete: ",
         zero_option_text="[ 0 ] All ",
-        options=[m["name"] for m in modlist],
+        options=[m.name for m in modlist],
         space_separated=True,
     )
     sel = (sel,) if isinstance(sel, int) else sel
@@ -41,21 +41,21 @@ def delete_handler(
 
                 # move mod to DELETED_MODS_FOLDER if it exists
                 try:
-                    if (SAVED_MODS_FOLDER / mod["name"]).exists():
-                        output_fn(f"\t[ / ] Attempting to move '{ SAVED_MODS_FOLDER / mod['name'] }' to {DELETED_MODS_FOLDER / mod['name'] }")
-                        shutil.move(SAVED_MODS_FOLDER / mod["name"],  DELETED_MODS_FOLDER / mod["name"])
+                    if (SAVED_MODS_FOLDER / mod.name).exists():
+                        output_fn(f"\t[ / ] Attempting to move '{ SAVED_MODS_FOLDER / mod.name }' to {DELETED_MODS_FOLDER / mod.name }")
+                        shutil.move(SAVED_MODS_FOLDER / mod.name,  DELETED_MODS_FOLDER / mod.name)
                     else:
-                        output_fn(f"\t[ / ] Attempting to move '{ ACTIVE_MODS_FOLDER / mod['name'] }' to {DELETED_MODS_FOLDER / mod['name'] }")
-                        shutil.move(ACTIVE_MODS_FOLDER / mod["name"], DELETED_MODS_FOLDER / mod["name"])
+                        output_fn(f"\t[ / ] Attempting to move '{ ACTIVE_MODS_FOLDER / mod.name }' to {DELETED_MODS_FOLDER / mod.name }")
+                        shutil.move(ACTIVE_MODS_FOLDER / mod.name, DELETED_MODS_FOLDER / mod.name)
 
                 except Exception as e:
-                    output_fn(f"\t[ ! ] '{mod['name']}' could not be moved to deleted mods: {e}")
+                    output_fn(f"\t[ ! ] '{mod.name}' could not be moved to deleted mods: {e}")
 
-                shutil.rmtree(SAVED_MODS_FOLDER / mod["name"], ignore_errors=True)
-                shutil.rmtree(ACTIVE_MODS_FOLDER / mod["name"], ignore_errors=True)
+                shutil.rmtree(SAVED_MODS_FOLDER / mod.name, ignore_errors=True)
+                shutil.rmtree(ACTIVE_MODS_FOLDER / mod.name, ignore_errors=True)
                 modlist.remove(mod)
 
-                output_fn(f"\t[ + ] Deleted {mod['name']}.")
+                output_fn(f"\t[ + ] Deleted {mod.name}.")
 
     output_fn("\n[ + ] Deletion complete.")
     save_modlist(modlist)

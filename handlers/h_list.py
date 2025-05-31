@@ -18,7 +18,7 @@ def list_handler() -> None:
 
     # Settings for column widths
     idx_col_w = 4  # For "[ 12 ]"
-    name_col_w = max(12, max(len(m["name"]) for m in modlist))  # At least 12 wide
+    name_col_w = max(12, max(len(m.name) for m in modlist))  # At least 12 wide
     status_col_w = len("Enabled") + 2  # a little breathing room
     total_w = idx_col_w + name_col_w + status_col_w + 10  # spacing + dividers
 
@@ -33,10 +33,10 @@ def list_handler() -> None:
     output_fn("-" * total_w)
 
     for idx, m in enumerate(modlist, 1):
-        status = ["🔴", "🟢"][m["enabled"]]
+        status = ["🔴", "🟢"][m.enabled]
         output_fn(
             f"{str(idx).center(idx_col_w)} | "
-            f"{m['name'].center(name_col_w)} | "
+            f"{m.name.center(name_col_w)} | "
             f"{status.center(status_col_w)}"
         )
 

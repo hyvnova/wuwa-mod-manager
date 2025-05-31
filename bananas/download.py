@@ -1,11 +1,9 @@
 # bananas/downloader.py
-import re, os, time, random, shutil, requests
+import re, os, time, random, requests
 from pathlib import Path
-from typing import Dict, List, Optional
 from requests.exceptions import RequestException
 from core import DOWNLOADS_FOLDER
 from bananas.shared import API_MOD_TYPE
-from pprint import pprint
 
 # retry / timeout settings
 HTTP_TIMEOUT = 15  # seconds
@@ -60,10 +58,6 @@ def _file_info_from_record(rec: dict) -> dict:
         "url": rec["_sDownloadUrl"],
     }
 
-
-# ------------------------------------------------------------------ #
-#  public function
-# ------------------------------------------------------------------ #
 def download(mod: API_MOD_TYPE, dst: Path = DOWNLOADS_FOLDER) -> Path:
     """
     Download the newest file for *mod* into *dst*.

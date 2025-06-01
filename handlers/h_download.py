@@ -36,6 +36,13 @@ def _download_batch(mods: List[API_MOD_TYPE], output_fn) -> None:
         try:
             path: Path = dl_mod(m, dst=DOWNLOADS_FOLDER)
             output_fn(f"\t[ + ] Saved → {path.resolve()}")
+
+            # Add a file named ".bananaid" to the mod folder
+            bananaid_path = path / ".bananaid"
+            with open(bananaid_path, "w", encoding="utf-8") as f:
+                f.write(str(m.id))
+
+
         except Exception as exc:  # noqa: BLE001
             output_fn(f"\t[ ! ] Failed: {exc}")
 
@@ -98,7 +105,7 @@ def download_handler() -> None:
     else:
         # 1 ─ show the 12 newest mods
         recent: List[API_MOD_TYPE] = get_recent_mods(limit=12)
-        output_fn("\n— Latest Mods on GameBanana —")
+        output_fn(" Latest Mods on GameBanana ")
 
         # 2-B ─ recent-list flow
         chosen = _pick_mods(recent, prompt="Indexes to download (space-separated): ")

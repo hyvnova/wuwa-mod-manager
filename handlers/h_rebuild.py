@@ -16,9 +16,9 @@ from core import (
 )
 from io_provider import IOProvider
 
-# ────────────────────────────────────────────────────────────────────────────────
+# ��������������������������������������������������������������������������������
 # Helpers
-# ────────────────────────────────────────────────────────────────────────────────
+# ��������������������������������������������������������������������������������
 
 def _get_multimod_paths(
     modlist: ModList
@@ -32,24 +32,24 @@ def _get_multimod_paths(
         if mod.type != ItemType.MOD:
             continue
 
-        if len(mod.path) > 2:
+        if len(mod.path) > 2: # type: ignore
             continue
 
-        for p in mod.path:
+        for p in mod.path: # type: ignore
             s.add(p)
     return s
 
 def _log_copy(src: Path, dest: Path, output) -> None:
     """Copy a folder while logging start/finish so hangs are obvious."""
-    output(f"\t[ → ] Copying {src.name} to SavedMods…")
+    output(f"\t[ / ] Copying {src.name} to SavedMods.")
     t0 = time.perf_counter()
     shutil.copytree(src, dest)
-    output(f"\t[ ✓ ] Copied in {time.perf_counter() - t0:,.1f}s.")
+    output(f"\t[ + ] Copied in {time.perf_counter() - t0:,.1f}s.")
 
 
-# ────────────────────────────────────────────────────────────────────────────────
+# ��������������������������������������������������������������������������������
 # Core restore logic
-# ────────────────────────────────────────────────────────────────────────────────
+# ��������������������������������������������������������������������������������
 
 
 def restore_entry_from_paths(
@@ -60,9 +60,9 @@ def restore_entry_from_paths(
     save_to_savedmods: bool,
 ) -> None:
     """
-    Scan *paths* for valid mods and make sure they’re present in *modlist*.
+    Scan *paths* for valid mods and make sure they're present in *modlist*.
 
-    The “no-duplicate-folder” rule:
+    The "no-duplicate-folder" rule:
         If a folder is already referenced by **any** multi-mod,
         another mod cannot claim that same folder.
     """
@@ -73,7 +73,7 @@ def restore_entry_from_paths(
     multipath_paths = _get_multimod_paths(modlist)
 
     for entry in paths:
-        # ─── Reject stray files ─────────────────────────────────────────────
+        # ��� Reject stray files ���������������������������������������������
         if not entry.is_dir():
             if entry.is_file() and entry.name == "modlist.json":
                 continue
@@ -83,7 +83,7 @@ def restore_entry_from_paths(
                 output(f"\t[ + ] Deleted {entry.name}.")
             continue
 
-        # ─── Classify candidate folder ─────────────────────────────────────
+        # ��� Classify candidate folder �������������������������������������
         status, mod_name, mod_paths = is_valid_mod_folder(entry)
 
         if status == False:
@@ -93,7 +93,7 @@ def restore_entry_from_paths(
                 output(f"\t[ + ] Deleted {entry.name}.")
             continue
 
-        # ─── Ensure entry exists / update paths ────────────────────────────
+        # ��� Ensure entry exists / update paths ����������������������������
         mod_object: ModObject | None = next((m for m in modlist if m.name == mod_name), None) # type: ignore
 
         if not mod_object:
@@ -122,16 +122,16 @@ def restore_entry_from_paths(
                 if len(mod_object.path) > 1:
                     multipath_paths.add(p_str)  # now part of a multi-mod
 
-        # ─── Copy to SavedMods if requested and not present ────────────────
+        # ��� Copy to SavedMods if requested and not present ����������������
         if save_to_savedmods and not (SAVED_MODS_FOLDER / mod_name).exists():
             _log_copy(entry, SAVED_MODS_FOLDER / mod_name, output)
 
     output(f"\t[ + ] {len(modlist)} mods tracked so far.")
 
 
-# ────────────────────────────────────────────────────────────────────────────────
+# ��������������������������������������������������������������������������������
 # Public entry point
-# ────────────────────────────────────────────────────────────────────────────────
+# ��������������������������������������������������������������������������������
 
 
 def rebuild_handler(*, delete_invalid: bool = True) -> None:
@@ -140,12 +140,12 @@ def rebuild_handler(*, delete_invalid: bool = True) -> None:
     """
 
     output = IOProvider().get_output()
-    output("- Rebuild modlist -".center(40, "="))
+    output(" Rebuild modlist ".center(40, "="))
     output("This will ensure every valid mod in SavedMods or Mods is tracked.\n\n")
 
     modlist = get_modlist()
 
-    # 1. Scan SavedMods  (no need to copy; they’re already there)
+    # 1. Scan SavedMods  (no need to copy; they're already there)
     restore_entry_from_paths(
         modlist,
         SAVED_MODS_FOLDER.iterdir(),
@@ -164,11 +164,10 @@ def rebuild_handler(*, delete_invalid: bool = True) -> None:
     # 3. Purge single-mods whose folder is covered by a multi-mod
     multipath_set = _get_multimod_paths(modlist)
 
-    
     to_drop = {
         m.name
         for m in modlist
-        if len(m.path) == 1 and m.path[0] in multipath_set # type: ignore
+        if isinstance(m, ModObject) and len(m.path) == 1 and m.path[0] in multipath_set
         and m.type == ItemType.MOD
     }
 
@@ -177,7 +176,7 @@ def rebuild_handler(*, delete_invalid: bool = True) -> None:
     modlist[:] = [m for m in modlist if m.name not in to_drop]
 
     # 4. Ensure enabled status is correct
-    # If mod in ACTIVE_MODS_FOLDER, it should be enabled. Otherwise, it’s disabled.
+    # If mod in ACTIVE_MODS_FOLDER, it should be enabled. Otherwise, it's disabled.
     for mod in modlist: # type: ignore
         mod.enabled = (ACTIVE_MODS_FOLDER / mod.name).exists()
 
@@ -186,7 +185,7 @@ def rebuild_handler(*, delete_invalid: bool = True) -> None:
     for mod in modlist: # type: ignore
 
         # This should only ever apply to single-mods, otherwise BIG FUCKING PROBLEM 
-        if not len(mod.path) == 1 or mod.type != ItemType.MOD:
+        if not isinstance(mod, ModObject) or not len(mod.path) == 1 or mod.type != ItemType.MOD:
             continue
 
         mod: ModObject = mod  # type: ignore
@@ -226,4 +225,4 @@ def rebuild_handler(*, delete_invalid: bool = True) -> None:
 
 
     save_modlist(modlist)
-    output("[ ✓ ] Rebuild complete.")
+    output("[ + ] Rebuild complete.")

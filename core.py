@@ -1,17 +1,18 @@
-from ast import Mod
 from dataclasses import asdict, dataclass, field
-from enum import Enum
+from enum import Enum, member
+from operator import is_
 import os
 from pathlib import Path
 
+from imageio import save
 from get_input import get_confirmation
 from io_provider import IOProvider
 import json
-from typing import Any, Dict, List, Tuple
+from typing import Any, List, Tuple
 
-# ────────────────────────────
+# ����������������������������
 #  Paths & constants
-# ────────────────────────────
+# ����������������������������
 USER_HOME = Path.home()
 DOWNLOADS_FOLDER = USER_HOME / "Downloads"
 APPDATA_FOLDER = Path(os.getenv("APPDATA", USER_HOME / "AppData" / "Roaming"))
@@ -21,14 +22,12 @@ WWMI_FOLDER = APPDATA_FOLDER / "XXMI Launcher" / "WWMI" # XXMI Mod Installer fol
 SAVED_MODS_FOLDER = WWMI_FOLDER / "SavedMods" # Folder where mods are saved after installation
 ACTIVE_MODS_FOLDER = WWMI_FOLDER / "Mods" # Folder where active mods are copied to be used by the game
 DELETED_MODS_FOLDER = WWMI_FOLDER / "DeletedMods" # Folder where deleted mods are moved to, so that they can be restored later
-UI_RESOURCES = WWMI_FOLDER / "ui_resources" # Where images/ui resources are stored, like icons and images for the mods
 
 MODLIST_FILE = WWMI_FOLDER / "modlist.json" # File where the list of installed mods and groups are stored
-UI_RESOURCES_FILE = WWMI_FOLDER / "ui_resources.json" # Defines mods UI resources, like icons and images. mod -> [images, ...]
 
 ALLOWED_MODS_FILE = WWMI_FOLDER / "allowed_mods.json" # Allowed folder names. Since some mods don't contain a mod.ini and intead have something like "modname.ini"
 # This file will keep track of the allowed folder names, so that the user can install mods without a mod.ini file.
-# ────────────────────────────
+# ����������������������������
 
 # Debug Paths
 # print(f"{USER_HOME}")
@@ -106,9 +105,9 @@ MODLIST Structure:
 """
 
 
-# ────────────────────────────
+# ����������������������������
 #  Data shapes
-# ────────────────────────────
+# ����������������������������
 class ItemType(str, Enum):
     MOD = "mod"
     GROUP = "group"
@@ -124,7 +123,7 @@ class ItemType(str, Enum):
             raise ValueError(f"Invalid ItemType: {value}") from exc
 
 
-# ───────────────────────── ModObject ─────────────────────────
+# ������������������������� ModObject �������������������������
 @dataclass
 class ModObject:
     name: str
@@ -145,7 +144,7 @@ class ModObject:
     # ---- (de)serialisation ----------------------------------
     def to_dict(self) -> dict:
         data = asdict(self)
-        data["type"] = self.type.value  # Enum → str
+        data["type"] = self.type.value  # Enum  str
         return data
 
     @classmethod
@@ -158,12 +157,16 @@ class ModObject:
             gb_id=data.get("gb_id"),
         )
 
+    # Optional convenience wrappers around json.dumps/loads
+    def to_json(self, **json_kw: Any) -> str:
+        return json.dumps(self.to_dict(), **json_kw)
+
     @classmethod
     def from_json(cls, raw: str | bytes) -> "ModObject":
         return cls.from_dict(json.loads(raw))
 
 
-# ──────────────────────── GroupObject ────────────────────────
+# ������������������������ GroupObject ������������������������
 @dataclass
 class GroupObject:
     name: str
@@ -196,6 +199,9 @@ class GroupObject:
             members=[ModObject.from_dict(m) for m in data.get("members", [])],
         )
 
+    def to_json(self, **json_kw: Any) -> str:
+        return json.dumps(self.to_dict(), **json_kw)
+
     @classmethod
     def from_json(cls, raw: str | bytes) -> "GroupObject":
         return cls.from_dict(json.loads(raw))
@@ -203,13 +209,9 @@ class GroupObject:
 
 type ModList = List[ModObject | GroupObject]  # List of ModObjects or GroupObjects
 
-type ModResources = Dict[str, List[str]]  # Mod name -> list of image paths
-    
-
-
-# ────────────────────────────
+# ����������������������������
 #  JSON helpers
-# ────────────────────────────
+# ����������������������������
 def get_modlist() -> ModList:
     if not MODLIST_FILE.exists():
         return []
@@ -239,9 +241,9 @@ def save_modlist(modlist: ModList) -> None:
         json.dump(serializable, fh, indent=4, ensure_ascii=False)
 
 
-# ────────────────────────────
+# ����������������������������
 #  Boot-strapping
-# ────────────────────────────
+# ����������������������������
 def ensure_directories() -> None:
     for d in (SAVED_MODS_FOLDER, ACTIVE_MODS_FOLDER, DELETED_MODS_FOLDER):
         os.makedirs(d, exist_ok=True)
@@ -251,13 +253,11 @@ def ensure_directories() -> None:
 
     if not ALLOWED_MODS_FILE.exists():
         ALLOWED_MODS_FILE.write_text('[]', encoding="utf-8")
-        
-    if not UI_RESOURCES_FILE.exists():
-        UI_RESOURCES_FILE.write_text("{}", encoding="utf-8")
 
-# - ────────────────────────────
+
+# - ����������������������������
 #  Folder validation
-# - ────────────────────────────
+# - ����������������������������
 def is_valid_mod_folder(folder: Path) -> Tuple[bool, str, List[Path]]:
     """
     Determine whether *folder* is a valid mod folder.
@@ -327,7 +327,7 @@ def is_valid_mod_folder(folder: Path) -> Tuple[bool, str, List[Path]]:
             )
 
     if not mod_dirs:
-        # No mod.ini anywhere reachable ⇒ definitely NOT_MOD
+        # No mod.ini anywhere reachable ? definitely NOT_MOD
         output_fn(f"\t[ ! ] No valid mod.ini found in {folder}.")
         return (False, "", [])
 
@@ -335,46 +335,10 @@ def is_valid_mod_folder(folder: Path) -> Tuple[bool, str, List[Path]]:
     mod_dirs = list(dict.fromkeys(mod_dirs))  # preserves order
 
     if len(mod_dirs) == 1:
-        # Exactly one valid mod — name is that folder’s basename
+        # Exactly one valid mod - name is that folder's basename
         mod_root = mod_dirs[0]
         return (True, mod_root.name, [mod_root])
 
-    # >1 distinct mod.ini-bearing folders ⇒ multi-mods
-    # Use the *parent* folder’s name as representative label
-    return (True, folder.name, mod_dirs)
-
-
-def get_images(mod_name: str) -> List[str]:
-    """
-    Get the list of image paths for a given mod.
-    """
-    
-    # lazy load the resources file
-    with UI_RESOURCES_FILE.open(encoding="utf-8") as fh:
-        try:
-            resources: ModResources = json.load(fh)
-
-        except json.JSONDecodeError:
-            print("[ ! ] Corrupted UI resources file, resetting.")
-            resources = {}
-
-    return resources.get(mod_name, [])
-
-def set_images(mod_name: str, images: List[str]) -> None:
-    """
-    Set the list of image paths for a given mod.
-    """
-    
-    with UI_RESOURCES_FILE.open("r+", encoding="utf-8") as fh:
-        try:
-            resources: ModResources = json.load(fh)
-        except json.JSONDecodeError:
-            resources = {}
-
-        # Update the resources for the mod
-        resources[mod_name] = images
-
-        # Write back the updated resources
-        fh.seek(0)
-        fh.truncate()
-        json.dump(resources, fh, indent=4, ensure_ascii=False)
+    # >1 distinct mod.ini-bearing folders ? multi-mods
+    # Use the *parent* folder's name as representative label
+    return (True, folder.name, mod_dirs)

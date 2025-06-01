@@ -11,6 +11,7 @@ import sys
 from typing import Callable, Dict
 from core import ensure_directories
 from handler_caller import get_handler
+from input_buffer import InputBuffer
 from io_provider import IOProvider
 from str_util import most_similar_option
 
@@ -39,6 +40,9 @@ MENU: Dict[int, tuple[str, Callable[[], None]]] = {
 def main() -> None:
     ensure_directories()
     get_handler("rebuild")()  # Rebuild modlist.json on startup
+
+   
+
 
     option_names = [name.lower() for name, _ in MENU.values()]
 

@@ -15,3 +15,4 @@ class API_MOD_TYPE:
     link: str
     thumb: str
     date: int # Unix timestamp, used as a sort of version number
+    id: int 

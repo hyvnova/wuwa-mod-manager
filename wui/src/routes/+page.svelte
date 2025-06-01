@@ -117,10 +117,10 @@
 
   let selected = writable([]); // Store for selected mods
   let search_query = "";
-  let enabled_filter = "all"; // Filter for enabled/disabled mods
+  let enabled_filter = $state("all"); // Filter for enabled/disabled mods
 
   // This is where we apply filters to the modlist
-  let matched_mods = modlist;
+  let matched_mods = writable(modlist);
 
   let mobile = $state(false); // State for mobile view
   let show_panel = $state(true); // State for showing/hiding the panel
@@ -178,10 +178,14 @@
         focus:outline-none focus:ring-1 focus:ring-indigo-500
         "
         oninput={(e) => {
-          search_query = e.target.value.toLowerCase();
-          matched_mods = modlist.filter((mod) =>
+          search_query = e.target.value.toLowerCase().trim();
+          if (search_query == "") {
+            matched_mods.set(modlist);
+          }
+
+          matched_mods.set(modlist.filter((mod) =>
             mod.name.toLowerCase().includes(search_query)
-          );
+          ));
         }}
       />
 
@@ -191,11 +195,11 @@
         bind:value={enabled_filter}
         onchange={() => {
           if (enabled_filter === "all") {
-            matched_mods = modlist;
+            matched_mods.set(modlist);
           } else if (enabled_filter === "enabled") {
-            matched_mods = modlist.filter((mod) => mod.enabled);
+            matched_mods.set(modlist.filter((mod) => mod.enabled));
           } else if (enabled_filter === "disabled") {
-            matched_mods = modlist.filter((mod) => !mod.enabled);
+            matched_mods.set(modlist.filter((mod) => !mod.enabled));
           }
         }}
         title="Filter by mod status"
@@ -211,7 +215,7 @@
     A grid of mod cards
   -->
     <div class="grid grid-cols-4 gap-4 self-center my-4 max-w-3xl">
-      {#each matched_mods as mod}
+      {#each $matched_mods as mod}
         <div
           class="mod-card bg-[#08060c] border-[#3b4264]
           relative
@@ -336,7 +340,7 @@
 
     {#if show_panel}
     <div
-      class="fixed top-8 right-6 w-xl bg-[#221f23]/60 p-4
+      class="fixed top-8 right-6 lg:w-xl bg-[#221f23]/60 p-4 md:w-md sm:w-sm
       border border-gray-700 shadow-2xl z-50 rounded-xl backdrop-blur-md"
       style="transition: transform 0.3s ease-in-out; height: 94vh;"
       id="mod-panel"
@@ -378,7 +382,7 @@
         <h4 class="text-md font-semibold text-gray-200 mb-2 text-center">
           Selected Mods
         </h4>
-        <ul class="list-decimal list-inside text-gray-300">
+        <ul class="list-decimal list-inside text-gray-300 overflow-auto">
           {#each $selected as mod}
             <li class="bit_text text-sm">{mod.name}</li>
           {/each}

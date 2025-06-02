@@ -28,7 +28,6 @@ class IOProvider:
         """
         def wrapped_input():
             v = InputBuffer().pop()
-            print(f"Input buffer value: {v}")
             if v is not None:
                 return v
             return input_fn()

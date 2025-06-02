@@ -16,9 +16,9 @@ from core import (
 )
 from io_provider import IOProvider
 
-# ��������������������������������������������������������������������������������
+# --------------------------------------------------------------------------------
 # Helpers
-# ��������������������������������������������������������������������������������
+# --------------------------------------------------------------------------------
 
 def _get_multimod_paths(
     modlist: ModList
@@ -47,9 +47,9 @@ def _log_copy(src: Path, dest: Path, output) -> None:
     output(f"\t[ + ] Copied in {time.perf_counter() - t0:,.1f}s.")
 
 
-# ��������������������������������������������������������������������������������
+# --------------------------------------------------------------------------------
 # Core restore logic
-# ��������������������������������������������������������������������������������
+# --------------------------------------------------------------------------------
 
 
 def restore_entry_from_paths(
@@ -73,7 +73,7 @@ def restore_entry_from_paths(
     multipath_paths = _get_multimod_paths(modlist)
 
     for entry in paths:
-        # ��� Reject stray files ���������������������������������������������
+        # --- Reject stray files ---------------------------------------------
         if not entry.is_dir():
             if entry.is_file() and entry.name == "modlist.json":
                 continue
@@ -83,7 +83,7 @@ def restore_entry_from_paths(
                 output(f"\t[ + ] Deleted {entry.name}.")
             continue
 
-        # ��� Classify candidate folder �������������������������������������
+        # --- Classify candidate folder -------------------------------------
         status, mod_name, mod_paths = is_valid_mod_folder(entry)
 
         if status == False:
@@ -93,7 +93,7 @@ def restore_entry_from_paths(
                 output(f"\t[ + ] Deleted {entry.name}.")
             continue
 
-        # ��� Ensure entry exists / update paths ����������������������������
+        # --- Ensure entry exists / update paths ----------------------------
         mod_object: ModObject | None = next((m for m in modlist if m.name == mod_name), None) # type: ignore
 
         if not mod_object:
@@ -122,16 +122,16 @@ def restore_entry_from_paths(
                 if len(mod_object.path) > 1:
                     multipath_paths.add(p_str)  # now part of a multi-mod
 
-        # ��� Copy to SavedMods if requested and not present ����������������
+        # --- Copy to SavedMods if requested and not present ----------------
         if save_to_savedmods and not (SAVED_MODS_FOLDER / mod_name).exists():
             _log_copy(entry, SAVED_MODS_FOLDER / mod_name, output)
 
     output(f"\t[ + ] {len(modlist)} mods tracked so far.")
 
 
-# ��������������������������������������������������������������������������������
+# --------------------------------------------------------------------------------
 # Public entry point
-# ��������������������������������������������������������������������������������
+# --------------------------------------------------------------------------------
 
 
 def rebuild_handler(*, delete_invalid: bool = True) -> None:

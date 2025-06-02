@@ -1,33 +1,46 @@
 from dataclasses import asdict, dataclass, field
-from enum import Enum, member
-from operator import is_
+from enum import Enum
 import os
 from pathlib import Path
 
-from imageio import save
 from get_input import get_confirmation
 from io_provider import IOProvider
 import json
 from typing import Any, List, Tuple
 
-# ����������������������������
+# ----------------------------
 #  Paths & constants
-# ����������������������������
+# ----------------------------
 USER_HOME = Path.home()
-DOWNLOADS_FOLDER = USER_HOME / "Downloads"
-APPDATA_FOLDER = Path(os.getenv("APPDATA", USER_HOME / "AppData" / "Roaming"))
 
+APPDATA_FOLDER = Path(os.getenv("APPDATA", USER_HOME / "AppData" / "Roaming"))
 WWMI_FOLDER = APPDATA_FOLDER / "XXMI Launcher" / "WWMI" # XXMI Mod Installer folder 
+
+DOWNLOADS_FOLDER = USER_HOME / "Downloads"
+TEMP_FOLDER = DOWNLOADS_FOLDER / "_HWWMM_TEMP"  # Temporary folder for storing shit like stupid mod id because this stupid system can't handle that
 
 SAVED_MODS_FOLDER = WWMI_FOLDER / "SavedMods" # Folder where mods are saved after installation
 ACTIVE_MODS_FOLDER = WWMI_FOLDER / "Mods" # Folder where active mods are copied to be used by the game
 DELETED_MODS_FOLDER = WWMI_FOLDER / "DeletedMods" # Folder where deleted mods are moved to, so that they can be restored later
 
+# Not the smartest way I guess
+__app_directories__ = (
+    TEMP_FOLDER,
+    SAVED_MODS_FOLDER,
+    ACTIVE_MODS_FOLDER,
+    DELETED_MODS_FOLDER,
+)
+
 MODLIST_FILE = WWMI_FOLDER / "modlist.json" # File where the list of installed mods and groups are stored
 
-ALLOWED_MODS_FILE = WWMI_FOLDER / "allowed_mods.json" # Allowed folder names. Since some mods don't contain a mod.ini and intead have something like "modname.ini"
+# Allowed folder names. Since some mods don't contain a mod.ini and intead have something like "modname.ini"
 # This file will keep track of the allowed folder names, so that the user can install mods without a mod.ini file.
-# ����������������������������
+ALLOWED_MODS_FILE = WWMI_FOLDER / "allowed_mods.json" 
+
+__app_json_files__ = (
+    MODLIST_FILE,
+    ALLOWED_MODS_FILE,
+)
 
 # Debug Paths
 # print(f"{USER_HOME}")
@@ -105,9 +118,9 @@ MODLIST Structure:
 """
 
 
-# ����������������������������
+# ----------------------------
 #  Data shapes
-# ����������������������������
+# ----------------------------
 class ItemType(str, Enum):
     MOD = "mod"
     GROUP = "group"
@@ -123,7 +136,7 @@ class ItemType(str, Enum):
             raise ValueError(f"Invalid ItemType: {value}") from exc
 
 
-# ������������������������� ModObject �������������������������
+# ------------------------- ModObject -------------------------
 @dataclass
 class ModObject:
     name: str
@@ -166,7 +179,7 @@ class ModObject:
         return cls.from_dict(json.loads(raw))
 
 
-# ������������������������ GroupObject ������������������������
+# ------------------------ GroupObject ------------------------
 @dataclass
 class GroupObject:
     name: str
@@ -209,9 +222,9 @@ class GroupObject:
 
 type ModList = List[ModObject | GroupObject]  # List of ModObjects or GroupObjects
 
-# ����������������������������
+# ----------------------------
 #  JSON helpers
-# ����������������������������
+# ----------------------------
 def get_modlist() -> ModList:
     if not MODLIST_FILE.exists():
         return []
@@ -241,23 +254,25 @@ def save_modlist(modlist: ModList) -> None:
         json.dump(serializable, fh, indent=4, ensure_ascii=False)
 
 
-# ����������������������������
+# ----------------------------
 #  Boot-strapping
-# ����������������������������
-def ensure_directories() -> None:
-    for d in (SAVED_MODS_FOLDER, ACTIVE_MODS_FOLDER, DELETED_MODS_FOLDER):
-        os.makedirs(d, exist_ok=True)
+# ----------------------------
+def ensure_dirs_and_files() -> None:
+    for directory in __app_directories__:
+        if not directory.exists():
+            directory.mkdir(parents=True, exist_ok=True)
+            print(f"[ + ] Created directory: {directory}")
 
-    if not MODLIST_FILE.exists():
-        MODLIST_FILE.write_text("[]", encoding="utf-8")
+    # Ensure all json files exist
+    for json_file in __app_json_files__:
+        if not json_file.exists():
+            json_file.write_text("[]", encoding="utf-8")
+            print(f"[ + ] Created JSON file: {json_file}")
 
-    if not ALLOWED_MODS_FILE.exists():
-        ALLOWED_MODS_FILE.write_text('[]', encoding="utf-8")
 
-
-# - ����������������������������
+# - ----------------------------
 #  Folder validation
-# - ����������������������������
+# - ----------------------------
 def is_valid_mod_folder(folder: Path) -> Tuple[bool, str, List[Path]]:
     """
     Determine whether *folder* is a valid mod folder.
@@ -341,4 +356,4 @@ def is_valid_mod_folder(folder: Path) -> Tuple[bool, str, List[Path]]:
 
     # >1 distinct mod.ini-bearing folders ? multi-mods
     # Use the *parent* folder's name as representative label
-    return (True, folder.name, mod_dirs)
+    return (True, folder.name, mod_dirs)

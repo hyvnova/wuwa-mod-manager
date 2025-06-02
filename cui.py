@@ -9,7 +9,7 @@ Console User Interface (CUI) for WuWa mod manager
 import os
 import sys
 from typing import Callable, Dict
-from core import ensure_directories
+from core import ensure_dirs_and_files
 from handler_caller import get_handler
 from input_buffer import InputBuffer
 from io_provider import IOProvider
@@ -38,10 +38,8 @@ MENU: Dict[int, tuple[str, Callable[[], None]]] = {
 
 
 def main() -> None:
-    ensure_directories()
+    ensure_dirs_and_files()
     get_handler("rebuild")()  # Rebuild modlist.json on startup
-
-   
 
 
     option_names = [name.lower() for name, _ in MENU.values()]

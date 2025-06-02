@@ -5,7 +5,7 @@ from typing import List, Dict
 
 from bananas.shared import API_MOD_TYPE  # now has .date attribute
 
-# ��������������� endpoints & constants ����������������
+# ────────────────────────── endpoints & constants ──────────────────────────
 URL = "https://gamebanana.com/games/20357"  # overwrite at runtime if needed
 INDEX_EP = "https://gamebanana.com/apiv10/Mod/Index"
 DATA_EP = "https://api.gamebanana.com/Core/Item/Data"
@@ -20,7 +20,7 @@ TIMEOUT = 10
 ID_BATCH_SIZE = 20  # Nuevo límite seguro de IDs por batch
 
 
-# ��������������� internal helpers ����������������
+# ────────────────────────── internal helpers ──────────────────────────
 def _game_id() -> int:
     m = re.search(r"/(?:games|mods/games)/(\d+)", URL)
     if not m:
@@ -43,7 +43,7 @@ def _page_ids(gid: int, page: int, per: int) -> List[int]:
     return [rec["_idRow"] for rec in r.json()["_aRecords"]]
 
 
-def _parse_mod(raw: dict, id_row=None) -> API_MOD_TYPE:
+def _parse_mod(raw: dict, mod_id: int | None = None) -> API_MOD_TYPE:
     """
     raw  API_MOD_TYPE, extracting newest file's _tsDateAdded.
     id_row se usará si no hay "_idRow" dentro de raw.
@@ -53,7 +53,7 @@ def _parse_mod(raw: dict, id_row=None) -> API_MOD_TYPE:
     if files_blob:
         newest_ts = max(f["_tsDateAdded"] for f in files_blob.values())
 
-    mod_id = raw.get("_idRow", id_row)  # flexible por si el id viene externo
+    mod_id = raw.get("_idRow", mod_id)  # flexible por si el id viene externo
 
     return API_MOD_TYPE(
         name=raw["name"],
@@ -78,9 +78,11 @@ def _fetch_batch(ids: List[int]) -> List[API_MOD_TYPE]:
         r = _safe_get(DATA_EP, params=params)
         r.raise_for_status()
         mods_raw = r.json()  # esto puede ser dict, no list!
-        # Logging temporal para ver formato:
-        print("[DEBUG] mods_raw recibido:")
-        print(repr(mods_raw))
+
+
+        # print("[DEBUG] mods_raw recibido:")
+        # print(repr(mods_raw))
+
         # Si es dict, los keys son los IDs
         if isinstance(mods_raw, dict):
             for key, val in mods_raw.items():
@@ -88,7 +90,7 @@ def _fetch_batch(ids: List[int]) -> List[API_MOD_TYPE]:
                     mod_id = int(key)
                 except Exception:
                     mod_id = key
-                results.append(_parse_mod(val, mod_id))
+                results.append(_parse_mod(val, mod_id=mod_id))
         # Si es list, intentar como antes
         elif isinstance(mods_raw, list):
             results.extend([_parse_mod(m) for m in mods_raw])
@@ -97,7 +99,8 @@ def _fetch_batch(ids: List[int]) -> List[API_MOD_TYPE]:
     return results
 
 
-# ��������������� public API ����������������
+# ────────────────────────── public API ──────────────────────────
+
 def get_recent_mods(limit: int = 10) -> List[API_MOD_TYPE]:
     if limit <= 0:
         return []

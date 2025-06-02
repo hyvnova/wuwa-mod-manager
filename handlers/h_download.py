@@ -20,7 +20,7 @@ from bananas import (
     get_recent_mods,
     search_mod,
 )
-from core import DOWNLOADS_FOLDER
+from core import DOWNLOADS_FOLDER, TEMP_FOLDER
 from get_input import get_menu_input
 from io_provider import IOProvider
 
@@ -37,10 +37,11 @@ def _download_batch(mods: List[API_MOD_TYPE], output_fn) -> None:
             path: Path = dl_mod(m, dst=DOWNLOADS_FOLDER)
             output_fn(f"\t[ + ] Saved → {path.resolve()}")
 
-            # Add a file named ".bananaid" to the mod folder
-            bananaid_path = path / ".bananaid"
+            # Create banana id file, so it can be used later
+            bananaid_path = TEMP_FOLDER / f"{m.name}.bananaid"
             with open(bananaid_path, "w", encoding="utf-8") as f:
                 f.write(str(m.id))
+            output_fn(f"\t[ + ] Banana ID saved → {bananaid_path.resolve()}")
 
 
         except Exception as exc:  # noqa: BLE001

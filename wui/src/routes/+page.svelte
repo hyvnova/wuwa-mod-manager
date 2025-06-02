@@ -1,420 +1,470 @@
-<script>
-  import { onMount } from "svelte";
-  import Fa from "svelte-fa";
-  import { faList, faTimes, faTrash, } from "@fortawesome/free-solid-svg-icons";
-  import { Splide, SplideSlide } from "@splidejs/svelte-splide";
+<script lang="ts">
+  /**
+   * WuWa Mod‑Manager UI (Svelte 5)
+   * -------------------------------------------------------------
+   * ‣ Cleaned‑up & commented.
+   * ‣ Uses Tailwind CSS for styling.
+   * ‣ Strongly‑typed via JSDoc / TS for better DX.
+   * ‣ All state lives in Svelte stores → less manual DOM poking.
+   * -------------------------------------------------------------
+   * @typedef {Object} Mod
+   * @property {string}   name     – Display name.
+   * @property {boolean}  enabled  – Current on/off state.
+   * @property {string[]} path     – List of full paths that compose the mod.
+   */
+
+  /* ───────────────────────────── Imports ───────────────────────────── */
+  import { onMount }      from "svelte";
+  import { writable,
+           derived       } from "svelte/store";
+
+  import Fa               from "svelte-fa";
+  import { faEdit, faList,
+           faTimes,
+           faToggleOff,
+           faToggleOn,
+           faTrash       } from "@fortawesome/free-solid-svg-icons";
+
+  import { Splide,
+           SplideSlide   } from "@splidejs/svelte-splide";
   import "@splidejs/svelte-splide/css";
-  import { writable } from "svelte/store";
+
+  import { modlist }      from "$lib";          // ← assumed plain array.
+
+  /* ───────────────────────────── Constants ─────────────────────────── */
+  const MOBILE_BREAKPOINT = 768;                 // px – Tailwind's md breakpoint.
+  const DEFAULT_ICON      = "/default_icon.png";
+
+  /* Dummy artwork map – replace with real thumbnails later. */
+  const modUiResources = {
+    "CarlottaPants + Shirt NewFace": [DEFAULT_ICON, DEFAULT_ICON, DEFAULT_ICON]
+  } satisfies Record<string, string[]>;
+
+  /* ───────────────────────────── Stores ────────────────────────────── */
+  /** Multiple‑selection list. */
+  export const multiSelected   = writable(/** @type {Mod[]} */([]));
+  /** Single selected mod (details panel). */
+  export const selected        = writable(/** @type {Mod|null} */(null));
+
+  // Filtering controls.
+  const searchQuery  = writable("");          // text from search bar
+  const enabledFilter = writable("all");      // "all" | "enabled" | "disabled"
+
+  // Viewport / panel state.
+  const isMobile        = writable(false);
+  const showPanel       = writable(true);      // bulk‑actions panel
+  const showSinglePanel = writable(false);     // single‑mod details panel
 
   /**
-   * @type {{
-   *  name: string,
-   *  path: string[],
-   *  enabled: boolean
-   * }[]}
+   * Derived list of mods after search + enabled filter.
+   * Reactively updates whenever either store changes.
    */
-  let modlist = [
-    {
-      name: "CarlottaPants + Shirt NewFace",
-      path: [
-        "C:\\Users\\Hyvnt\\AppData\\Roaming\\XXMI Launcher\\WWMI\\SavedMods\\CarlottaPants + Shirt NewFace",
-        "C:\\Users\\Hyvnt\\AppData\\Roaming\\XXMI Launcher\\WWMI\\Mods\\CarlottaPants + Shirt NewFace",
-      ],
-      enabled: false,
-    },
-    {
-      name: "CovenCarlottaBody",
-      path: [
-        "C:\\Users\\Hyvnt\\AppData\\Roaming\\XXMI Launcher\\WWMI\\SavedMods\\CovenCarlottaBody",
-      ],
-      enabled: false,
-    },
-    {
-      name: "CovenCarlottaCrystalHair",
-      path: [
-        "C:\\Users\\Hyvnt\\AppData\\Roaming\\XXMI Launcher\\WWMI\\SavedMods\\CovenCarlottaCrystalHair",
-      ],
-      enabled: false,
-    },
-    {
-      name: "CovenCarlottaHair",
-      path: [
-        "C:\\Users\\Hyvnt\\AppData\\Roaming\\XXMI Launcher\\WWMI\\SavedMods\\CovenCarlottaHair",
-      ],
-      enabled: false,
-    },
-    {
-      name: "hair1",
-      path: [
-        "C:\\Users\\Hyvnt\\AppData\\Roaming\\XXMI Launcher\\WWMI\\SavedMods\\hair1",
-      ],
-      enabled: false,
-    },
-    {
-      name: "RabbitFX",
-      path: [
-        "C:\\Users\\Hyvnt\\AppData\\Roaming\\XXMI Launcher\\WWMI\\SavedMods\\RabbitFX",
-        "C:\\Users\\Hyvnt\\AppData\\Roaming\\XXMI Launcher\\WWMI\\Mods\\RabbitFX",
-        "C:\\Users\\Hyvnt\\AppData\\Roaming\\XXMI Launcher\\WWMI\\SavedMods\\pb_pantsu2_2_2",
-        "C:\\Users\\Hyvnt\\AppData\\Roaming\\XXMI Launcher\\WWMI\\SavedMods\\HairCrystal",
-      ],
-      enabled: true,
-    },
-    {
-      name: "SeraphimCantarella",
-      path: [
-        "C:\\Users\\Hyvnt\\AppData\\Roaming\\XXMI Launcher\\WWMI\\SavedMods\\SeraphimCantarella",
-      ],
-      enabled: false,
-    },
-    {
-      name: "Seraphim_UmbrellaMod",
-      path: [
-        "C:\\Users\\Hyvnt\\AppData\\Roaming\\XXMI Launcher\\WWMI\\SavedMods\\Seraphim_UmbrellaMod",
-      ],
-      enabled: false,
-    },
-    {
-      name: "skin",
-      path: [
-        "C:\\Users\\Hyvnt\\AppData\\Roaming\\XXMI Launcher\\WWMI\\SavedMods\\skin",
-      ],
-      enabled: false,
-    },
-    {
-      name: "Zani's button gave up!",
-      path: [
-        "C:\\Users\\Hyvnt\\AppData\\Roaming\\XXMI Launcher\\WWMI\\SavedMods\\Zani's button gave up!",
-        "C:\\Users\\Hyvnt\\AppData\\Roaming\\XXMI Launcher\\WWMI\\Mods\\Zani's button gave up!",
-      ],
-      enabled: true,
-    },
-    {
-      name: "hideui_uid_fog_v233",
-      path: [
-        "C:\\Users\\Hyvnt\\AppData\\Roaming\\XXMI Launcher\\WWMI\\SavedMods\\hideui_uid_fog_v233",
-        "C:\\Users\\Hyvnt\\AppData\\Roaming\\XXMI Launcher\\WWMI\\Mods\\hideui_uid_fog_v233",
-      ],
-      enabled: true,
-    },
-  ];
+  const matchedMods = derived(
+    [searchQuery, enabledFilter],
+    ([$q, $filter]) => {
+      let list = modlist;
 
-  const default_icon = "/default_icon.png";
+      // 1) Text search --------------------------------------------------
+      if ($q.trim()) {
+        const q = $q.toLowerCase();
+        list = list.filter((m) => m.name.toLowerCase().includes(q));
+      }
 
-  let mod_ui_resources = {
-    "CarlottaPants + Shirt NewFace": [default_icon, default_icon, default_icon],
-  };
+      // 2) Enabled state filter ----------------------------------------
+      switch ($filter) {
+        case "enabled":
+          list = list.filter((m) => m.enabled);
+          break;
+        case "disabled":
+          list = list.filter((m) => !m.enabled);
+          break;
+      }
 
-  // If a mod has 2 or more different paths located at SavedMods, then it's considered a group
-  function is_group(mod) {
-    // Path whose before-last segment is "SavedMods"
-    let memebers = mod.path.filter((p) => {
-      const segments = p.split("\\");
-      return segments[segments.length - 2] === "SavedMods";
-    });
-    return memebers.length > 1;
+      return list;
+    },
+    modlist  // <- initial value
+  );
+
+  /* ───────────────────────────── Helpers ───────────────────────────── */
+  /**
+   * A mod is considered a *group* when it contains more than one path whose
+   * parent directory is named "SavedMods".
+   * @param {Mod} mod
+   */
+  function isGroup(mod) {
+    return mod.path.filter((p) => p.split("\\").at(-2) === "SavedMods").length > 1;
   }
 
-  let selected = writable([]); // Store for selected mods
-  let search_query = "";
-  let enabled_filter = $state("all"); // Filter for enabled/disabled mods
+  /**
+   * DUMMY bulk‑action handler.
+   * @param {string} action - "rename" | "delete" | "create_group" | "toggle_on" | "toggle_off"
+   */
+  function handle_group_action(action) { console.log(`Action: ${action}`, $multiSelected); }
 
-  // This is where we apply filters to the modlist
-  let matched_mods = writable(modlist);
+  /**
+   * DUMMMY single‑mod action handler.
+   * @param {string} action - "rename" | "delete" | "toggle"
+   * @param {Mod} mod - The mod to act on.
+   */
+  function handle_single_action(action, mod) { console.log(`Action: ${action}`, mod); }
 
-  let mobile = $state(false); // State for mobile view
-  let show_panel = $state(true); // State for showing/hiding the panel
-  let window_width = $state(0);
+  /** Quick predicate for viewport size → mobile boolean */
+  const viewportIsMobile = () => window.innerWidth < MOBILE_BREAKPOINT;
+
+  /* ───────────────────────────── Lifecycle ─────────────────────────── */
   onMount(() => {
-    window_width = window.innerWidth;
+    // Initial run ------------------------------------------------------
+    const mobile = viewportIsMobile();
+    isMobile.set(mobile);
+    showPanel.set(!mobile);
+    showSinglePanel.set(!mobile);
 
-    // If on mobile don't show the panel by default
-    if (window.innerWidth < 768) {
-      mobile = true;
-      show_panel = false;
-    }
-
-    window.onresize = () => {
-      window_width = window.innerWidth;
-      if (window_width < 768) {
-        mobile = true;
-        show_panel = false; // Hide panel on mobile
-      } else {
-        mobile = false;
-        show_panel = true; // Show panel on desktop
-      }
+    // Resize listener --------------------------------------------------
+    const onResize = () => {
+      const mob = viewportIsMobile();
+      isMobile.set(mob);
+      showPanel.set(!mob);
+      showSinglePanel.set(!mob);
     };
+
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   });
 </script>
 
-<main class="flex flex-col p-1 w-full h-screen bg-[#181A1B]">
-  <!-- Main content area -->
-  <header
-    class="content p-6 rounded-md flex flex-col mx-auto justify-center items-center"
-    aria-label="Main header"
-  >
-    <h1 class="text-2xl font-serif font-bold mb-3 text-gray-100 tracking-tight">
+<main class="flex flex-col h-screen w-full bg-[#181A1B] p-1">
+  <!-- ─────────────────────────── Header ─────────────────────────── -->
+  <header aria-label="Main header" class="mx-auto flex flex-col items-center justify-center rounded-md p-6">
+    <h1 class="mb-3 text-2xl font-serif font-bold tracking-tight text-gray-100">
       <span class="italic text-indigo-300">Hyvnt's</span> WuWa Mod Manager
     </h1>
-    <p class="mb-6 text-gray-400 font-light">
-      A stupid piece of software, done by stupid motherfucker <span
-        class="italic text-indigo-200">Enjoy the suffering.</span
-      >
-
+    <p class="mb-6 font-light text-gray-400">
+      A stupid piece of software, done by stupid motherfucker
+      <span class="italic text-indigo-200">Enjoy the suffering.</span>
       <span class="italic text-indigo-300">Sucker.</span>
     </p>
   </header>
 
-  <!-- Main content -->
-  <div class="flex flex-col mt-8 justify-center items-center">
-    <!-- Filters -->
-    <form class="flex flex-row justify-between items-center w-full max-w-xl">
-      <!-- Search bar -->
+  <!-- ─────────────────────────── Filters ─────────────────────────── -->
+  <section class="mt-8 flex w-full max-w-xl flex-col items-center self-center">
+    <form class="flex w-full flex-row items-center justify-between">
+      <!-- Search ------------------------------------------------------- -->
       <input
         type="text"
         placeholder="Search mods..."
-        class="p-3 rounded-md w-full
-       bg-[#181A1B] text-gray-200 border border-gray-600
-        focus:outline-none focus:ring-1 focus:ring-indigo-500
-        "
-        oninput={(e) => {
-          search_query = e.target.value.toLowerCase().trim();
-          if (search_query == "") {
-            matched_mods.set(modlist);
-          }
-
-          matched_mods.set(modlist.filter((mod) =>
-            mod.name.toLowerCase().includes(search_query)
-          ));
-        }}
+        bind:value={$searchQuery}
+        class="w-full rounded-md border border-gray-600 bg-[#181A1B] p-3 text-gray-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        aria-label="Search mods"
       />
 
-      <!-- Enabled filter -->
+      <!-- Enabled filter ---------------------------------------------- -->
       <select
-        class="ml-4 p-2 rounded border border-gray-600 bg-[#181A1B] text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        bind:value={enabled_filter}
-        onchange={() => {
-          if (enabled_filter === "all") {
-            matched_mods.set(modlist);
-          } else if (enabled_filter === "enabled") {
-            matched_mods.set(modlist.filter((mod) => mod.enabled));
-          } else if (enabled_filter === "disabled") {
-            matched_mods.set(modlist.filter((mod) => !mod.enabled));
-          }
-        }}
-        title="Filter by mod status"
+        bind:value={$enabledFilter}
         aria-label="Filter by mod status"
+        class="ml-4 rounded border border-gray-600 bg-[#181A1B] p-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
       >
-        <option value="all" selected>All</option>
+        <option value="all">All</option>
         <option value="enabled">Enabled</option>
         <option value="disabled">Disabled</option>
       </select>
     </form>
+  </section>
 
-    <!--
-    A grid of mod cards
-  -->
-    <div class="grid grid-cols-4 gap-4 self-center my-4 max-w-3xl">
-      {#each $matched_mods as mod}
-        <div
-          class="mod-card bg-[#08060c] border-[#3b4264]
-          relative
-          py-2 rounded-md shadow-md
-          flex flex-col justify-center items-center border
-          transition-all
-          hover:scale-105
-          hover:border-[#94aee6]
-          {is_group(mod) ? ' col-span-2' : ''}"
-        >
-          <!-- Top Bar
-            Contains mod name
-          -->
-          <div
-            class="flex items-center justify-between mb-2 p-1 w-full"
-            title={mod.name}
-          >
-            <h4
-              class="bit_text flex-1 min-w-0 text-center text-lg
-         overflow-hidden text-ellipsis whitespace-nowrap"
-            >
-              {mod.name}
-            </h4>
-          </div>
-
-          <!-- Main content Image or Icon-->
-          <div class="flex items-center justify-center h-full w-full">
-            <Splide
-              options={{
-                type: "loop",
-                perPage: 1,
-                perMove: 1,
-                pagination: false,
-                pauseOnHover: true,
-                arrows: false,
-                autoplay: true,
-                interval: 3000,
-                speed: 500,
-              }}
-            >
-              {#each mod_ui_resources[mod.name] || [default_icon] as resource, i}
-                <SplideSlide>
-                  <img
-                    src={resource}
-                    alt={mod.name + " icon " + (i + 1)}
-                    class="w-32 h-32 object-contain rounded-md"
-                  />
-                </SplideSlide>
-              {/each}
-            </Splide>
-          </div>
-
-          <!-- Bottom Bar
-              Contains utilities, like enable/disable, delete, etc.
-              Currently only enable/disable 
-            -->
-
-          <!-- Enabled status -- an little overpositioned color in the bottom right corner-->
-          <button
-            class="absolute bottom-2 right-2 w-4 h-4 rounded-tl-full
-            {mod.enabled ? 'bg-green-500' : 'bg-red-500'}
-              transition-all duration-300
-              hover:scale-200
-              hover:border-2 hover:border-gray-300
-            "
-            title={mod.enabled ? "Enabled" : "Disabled"}
-            aria-label={mod.enabled ? "Enabled" : "Disabled"}
-            onclick={() => {
-              mod.enabled = !mod.enabled;
-            }}
-          >
-          </button>
-
-          <!-- Select button -- a little overpositioned check input in top left-->
-          <input
-            type="checkbox"
-            checked={$selected.includes(mod)}
-            class="
-              select-mod-checkbox
-              opacity-0
-              absolute top-2 left-2 w-6 h-6 rounded-br-full
-              appearance-none border-2 border-gray-500
-              checked:bg-indigo-500 checked:border-indigo-400
-              bg-gray-700 hover:bg-gray-600 transition-all duration-300
-              focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            title="Select mod"
-            aria-label="Select mod"
-            onclick={() => {
-              if ($selected.includes(mod)) {
-                selected.update((s) => s.filter((m) => m !== mod));
-              } else {
-                selected.update((s) => [...s, mod]);
-              }
-            }}
-          />
+  <!-- ─────────────────────────── Mod Grid ─────────────────────────── -->
+  <section class="my-4 grid max-w-3xl grid-cols-4 gap-4 self-center">
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    {#each $matchedMods as mod}
+      <!-- Card wrapper ------------------------------------------------- -->
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore element_invalid_self_closing_tag -->
+      <div
+        on:click={() =>
+          selected.update((s) => (s?.name === mod.name ? null : mod))
+        }
+        class="mod-card relative flex flex-col items-center justify-center rounded-md border border-[#3b4264] bg-[#08060c] py-2 shadow-md transition-all hover:scale-105 hover:border-[#94aee6] hover:bg-[#11111c] hover:shadow-lg"
+        class:col-span-2={isGroup(mod)}
+        class:border-2={$selected?.name === mod.name}
+        class:border-indigo-500={$selected?.name === mod.name}
+        class:bg-[#1a1a2b]={$selected?.name === mod.name}
+        class:hover:bg-[#1e1e34]={$selected?.name === mod.name}
+        class:hover:border-[#94aee6]={$selected?.name !== mod.name}
+      >
+        <!-- Card title -------------------------------------------------- -->
+        <div class="mb-2 flex w-full items-center justify-between p-1" title={mod.name}>
+          <h4 class="bit_text flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-center text-lg">
+            {mod.name}
+          </h4>
         </div>
-      {/each}
-    </div>
-  </div>
 
-  <!-- Panel
-    Panel it's overpositioned panel on the right side of the screen or center of the screen in mobile
-    Will provide utilities for selected mods such as delete, enable/disable, grouping, etc.
-    If will only be visible when at least one mod is selected
-  -->
-  {#if $selected.length > 0}
+        <!-- Carousel --------------------------------------------------- -->
+        <div class="flex h-full w-full items-center justify-center">
+          <Splide
+            options={{
+              type: "loop",
+              perPage: 1,
+              perMove: 1,
+              pagination: false,
+              pauseOnHover: true,
+              arrows: false,
+              autoplay: true,
+              interval: 3000,
+              speed: 500
+            }}
+          >
+            {#each modUiResources[mod.name] || [DEFAULT_ICON] as resource, i}
+              <SplideSlide>
+                <img
+                  src={resource}
+                  alt={`${mod.name} icon ${i + 1}`}
+                  class="h-32 w-32 rounded-md object-contain"
+                />
+              </SplideSlide>
+            {/each}
+          </Splide>
+        </div>
 
-    <!-- If on mobile, show button to toggle panel -->
-    {#if mobile && !show_panel}
+        <!-- Enabled toggle --------------------------------------------- -->
+        <button
+          title={mod.enabled ? "Enabled" : "Disabled"}
+          aria-label={mod.enabled ? "Enabled" : "Disabled"}
+          on:click={() => {
+            handle_single_action("toggle", mod);
+            mod.enabled = !mod.enabled;
+          }}
+          class="absolute bottom-2 right-2 h-4 w-4 rounded-tl-full transition-all duration-300 hover:scale-200 hover:border-2 hover:border-gray-300"
+          class:bg-green-500={mod.enabled}
+          class:bg-red-500={!mod.enabled}
+        />
+
+        <!-- Multi‑select checkbox -------------------------------------- -->
+        <input
+          type="checkbox"
+          class="select-mod-checkbox absolute top-2 left-2 h-6 w-6 appearance-none rounded-br-full border-2 border-gray-500 bg-gray-700 opacity-0 transition-all duration-300 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 checked:border-indigo-400 checked:bg-indigo-500"
+          checked={$multiSelected.includes(mod)}
+          title="Select mod"
+          aria-label="Select mod"
+          on:change={() => {
+            multiSelected.update((list) =>
+              list.includes(mod) ? list.filter((m) => m !== mod) : [...list, mod]
+            );
+          }}
+        />
+      </div>
+    {/each}
+  </section>
+
+  <!-- ─────────────────────── Bulk‑action Panel ─────────────────────── -->
+  {#if $multiSelected.length}
+    <!-- FAB (mobile) -------------------------------------------------->
+    {#if $isMobile && !$showPanel}
       <button
-        class="fixed bottom-4 right-4 bg-indigo-600 text-white p-3 rounded-full
-        shadow-lg hover:bg-indigo-700 transition-colors duration-200 z-50"
-        onclick={() => {
-          show_panel = !show_panel;
-        }}
+        class="fixed bottom-4 left-4 z-50 rounded-full bg-indigo-600 p-3 text-white shadow-lg transition-colors duration-200 hover:bg-indigo-700"
         title="Toggle Mod Panel"
         aria-label="Toggle Mod Panel"
+        on:click={() => {showPanel.set(true);}}
       >
         <Fa icon={faList} />
       </button>
     {/if}
 
-    {#if show_panel}
-    <div
-      class="fixed top-8 right-6 lg:w-xl bg-[#221f23]/60 p-4 md:w-md sm:w-sm
-      border border-gray-700 shadow-2xl z-50 rounded-xl backdrop-blur-md"
-      style="transition: transform 0.3s ease-in-out; height: 94vh;"
-      id="mod-panel"
-    >
-      <button
-        class="absolute top-2 right-2 text-gray-400 hover:text-gray-200"
-        onclick={() => {
-          selected.set([]);
-          show_panel = false;
-        }}
-        title="Clear selection"
-        aria-label="Clear selection"
+    {#if $showPanel}
+      <aside
+        id="mod-panel"
+        class="fixed left-6 top-8 z-50 h-[94vh] w-[calc(100vw-3rem)] max-w-xl rounded-xl border border-gray-700 bg-[#221f23]/60 p-4 backdrop-blur-md shadow-2xl md:max-w-md lg:max-w-xl"
       >
-        <Fa icon={faTimes} />
-      </button>
-
-      <!-- Main buttons -->
-      <div class="flex flex-col space-y-2 my-8">
-        <!-- Delete button -->
+        <!-- Close / clear selection ---------------------------------- -->
         <button
-          class="bit_text bg-red-600 text-white p-2 rounded-md
-          hover:bg-red-700 transition-colors duration-200 inline-flex items-center justify-evenly"
-          onclick={() => {
-            $selected.forEach((mod) => {
-              modlist = modlist.filter((m) => m !== mod);
-            });
-            selected.set([]);
+          class="absolute right-2 top-2 text-gray-400 transition-colors hover:text-gray-200 w-5 h-5"
+          title="Clear selection"
+          aria-label="Clear selection"
+          on:click={() => {
+            multiSelected.set([]);
+            showPanel.set(false);
           }}
-          title="Delete selected mods"
-          aria-label="Delete selected mods"
+        >
+          <Fa icon={faTimes} />
+        </button>
+
+        <!-- Create group -------------------------------------------- -->
+        <div class="my-4 flex flex-col space-y-2">
+          <button
+            class="bit_text inline-flex items-center justify-center rounded-md bg-indigo-600 p-2 text-white transition-colors duration-200 hover:bg-indigo-700"
+            title="Create group from selected mods"
+            aria-label="Create group from selected mods"
+            on:click={() => {
+              handle_group_action("create_group");
+            }}
+          >
+            <Fa icon={faList} />
+            <span class="ml-2">Create Group</span>
+          </button>
+        </div>
+         
+        <!-- Rename group --------------------------------------------- -->
+        <div class="my-4 flex flex-col space-y-2">
+          <button
+            class="bit_text inline-flex items-center justify-center rounded-md bg-indigo-600 p-2 text-white transition-colors duration-200 hover:bg-indigo-700"
+            title="Rename selected mods"
+            aria-label="Rename selected mods"
+            on:click={() => {
+              handle_group_action("rename");
+            }}
+          >
+            <Fa icon={faEdit} />
+            <span class="ml-2">Rename Selected Mods</span>
+          </button>
+        </div>
+
+        <!-- Toggle enabled state ------------------------------------- -->
+        <div class="my-4 flex flex-row w-full space-x-2">
+          <button
+            class="bit_text inline-flex items-center justify-center rounded-md bg-green-600 p-2 text-white transition-colors duration-200 hover:bg-green-700 w-1/2"
+            title="Toggle enabled state of selected mods"
+            aria-label="Toggle enabled state of selected mods"
+            on:click={() => {
+              handle_group_action("toggle_on");
+            }}
+          >
+            <Fa icon={faToggleOn} />
+            <span class="ml-2">Enable</span>
+          </button>
+
+          <button
+            class="bit_text inline-flex items-center justify-center rounded-md bg-red-600 p-2 text-white transition-colors duration-200 hover:bg-red-700 w-1/2"
+            title="Disable selected mods"
+            aria-label="Disable selected mods"
+            on:click={() => {
+              handle_group_action("toggle_off");
+            }}
+          >
+            <Fa icon={faToggleOff} />
+            <span class="ml-2">Disable</span>
+          </button>
+        </div>
+
+        <!-- Danger zone ---------------------------------------------- -->
+        <div class="my-8 flex flex-col space-y-2">
+          <button
+            class="bit_text inline-flex items-center justify-center rounded-md bg-red-600 p-2 text-white transition-colors duration-200 hover:bg-red-700"
+            title="Delete selected mods"
+            aria-label="Delete selected mods"
+            on:click={() => {
+              handle_group_action("delete");
+            }}
+          >
+            <Fa icon={faTrash} />
+            <span class="ml-2">Delete</span>
+          </button>
+        </div>
+
+        <!-- Selected list -------------------------------------------- -->
+        <div class="mb-4 overflow-y-auto">
+          <h4 class="mb-2 text-center text-lg font-semibold text-gray-200">
+            Selected Mods
+          </h4>
+          <ul class="list-inside list-decimal overflow-auto text-md text-gray-300">
+            {#each $multiSelected as m}
+              <li class="bit_text text-md">{m.name}</li>
+            {/each}
+          </ul>
+        </div>
+      </aside>
+    {/if}
+  {/if}
+
+  <!-- ─────────────────────── Single‑mod Details ────────────────────── -->
+  {#if $selected}
+    {#if $isMobile && !$showSinglePanel}
+      <button
+        class="fixed bottom-4 right-4 z-50 rounded-full bg-indigo-600 p-3 text-white shadow-lg transition-colors duration-200 hover:bg-indigo-700"
+        title="Toggle Mod Details"
+        aria-label="Toggle Mod Details"
+        on:click={() => showSinglePanel.set(true)}
+      >
+        <Fa icon={faList} />
+      </button>
+    {/if}
+
+    {#if $showSinglePanel}
+      <aside
+        id="mod-details-panel"
+        class="flex flex-col fixed right-6 top-8 z-50 min-w-[320px] max-w-[400px] rounded-xl border border-gray-700 bg-[#221f23]/60 p-4 backdrop-blur-md shadow-2xl"
+      >
+        <!-- Close ----------------------------------------------------- -->
+        <button
+          class="absolute right-2 top-2 text-gray-400 transition-colors hover:text-gray-200"
+          title="Close details"
+          aria-label="Close details"
+          on:click={() => {selected.set(null); showSinglePanel.set(false)}}
+        >
+          <Fa icon={faTimes} />
+        </button>
+
+        <h3 class="bit_text mb-2 text-center text-xl font-bold text-gray-100">{$selected.name}</h3>
+
+
+        <!-- Options -------------------------------------------- -->
+
+        <!-- Rename -------------------------------------------- -->
+        <button
+          class="bit_text mb-4 inline-flex items-center justify-center rounded-md bg-indigo-600 p-2 text-white transition-colors duration-200 hover:bg-indigo-700"
+          title="Rename mod"
+          aria-label="Rename mod"
+          on:click={() => {
+            handle_single_action("rename", $selected);
+          }}
+        >
+          <Fa icon={faEdit} />
+          <span class="ml-2">Rename</span>
+        </button>
+
+        <!--Delete -------------------------------------------- -->
+        <button
+          class="bit_text mb-4 inline-flex items-center justify-center rounded-md bg-red-600 p-2 text-white transition-colors duration-200 hover:bg-red-700"
+          title="Delete mod"
+          aria-label="Delete mod"
+          on:click={() => {
+            handle_single_action("delete", $selected);
+          }}
         >
           <Fa icon={faTrash} />
-          Delete Selected Mods
+          <span class="ml-2">Delete</span>
         </button>
-      </div>
 
-      <!-- List selected mods-->
-      <div class="mb-4">
-        <h4 class="text-md font-semibold text-gray-200 mb-2 text-center">
-          Selected Mods
-        </h4>
-        <ul class="list-decimal list-inside text-gray-300 overflow-auto">
-          {#each $selected as mod}
-            <li class="bit_text text-sm">{mod.name}</li>
-          {/each}
-        </ul>
-      </div>
-    </div>
+
+        <!-- Paths list ----------------------------------------------- -->
+        <div class="mb-2">
+          <span class="font-semibold text-gray-400 text-lg">Paths:</span>
+          <ul class="list-inside list-disc text-sm text-gray-300">
+            {#each $selected.path as p}
+              <li class="bit_text text-sm">
+                {p}
+              </li>
+            {/each}
+          </ul>
+        </div>
+      </aside>
     {/if}
   {/if}
 </main>
 
+<!-- ─────────────────────────── Fonts ─────────────────────────────── -->
 <svelte:head>
-  <link
-    href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap"
-    rel="stylesheet"
-  />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" />
 </svelte:head>
 
+<!-- ─────────────────────────── Component CSS ─────────────────────── -->
 <style>
   .bit_text {
     font-family: "DotGothic16", sans-serif;
   }
 
-  /*
-   When mod car it's hovered, make selection checkbox visible
-   */
-  .mod-card:hover .select-mod-checkbox {
-    opacity: 1;
-    transition: opacity 0.3s ease-in-out;
-  }
-
-  /* If select-mod-checkbox is checked, make it visible */
+  /* Show checkbox only on card hover (or when checked) */
+  .mod-card:hover .select-mod-checkbox,
   .select-mod-checkbox:checked {
     opacity: 1;
+    transition: opacity 0.3s ease-in-out;
   }
 </style>

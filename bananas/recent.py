@@ -55,9 +55,11 @@ def _fetch_details(mod_ids: List[int]) -> List[API_MOD_TYPE]:
         name = mod.get("name")
         link = mod.get("Url().sProfileUrl()")
         thumb = mod.get("Preview().sStructuredDataFullsizeUrl()")
+        date = mod.get("_tsDateAdded", 0)
+        id = mod.get("_idRow")
 
-        if name and link and thumb:
-            out.append(API_MOD_TYPE(name=name, link=link, thumb=thumb))
+        if name and link and thumb and id:
+            out.append(API_MOD_TYPE(name=name, link=link, thumb=thumb, id=id, date=date))
 
     return out
 

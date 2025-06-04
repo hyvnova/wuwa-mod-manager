@@ -7,6 +7,7 @@ import shutil
 import eel
 from pathlib import Path
 
+from core import MOD_RES_FOLDER, MODLIST_FILE, MODS_RESOURCES_FILE, ModList, ModResource, ensure_dirs_and_files, get_mod_resources, get_modlist
 from io_provider import IOProvider
 
 SVELTE_PATH = Path(__file__).parent / "wui"
@@ -32,7 +33,7 @@ def py_get_input(value: str) -> None:
 
 def input_fn() -> str:
     # tell js we want input
-    eel.js_request_input()
+    eel.js_request_input() # type: ignore
 
     # zZzZzzZ
     waiting_for_input[0] = True
@@ -48,7 +49,15 @@ def input_fn() -> str:
     # print(f"Returning input: {value}")
     return value
 
+@eel.expose
+def py_raw_get_modlist() -> str:
+    with open(MODLIST_FILE, "r", encoding="utf-8") as f:
+        return f.read()
 
+@eel.expose
+def py_raw_get_mod_resources() -> str:
+    with open(MODS_RESOURCES_FILE, "r", encoding="utf-8") as f:
+        return f.read()
 
 @eel.expose
 def call_handler(handler_name: str) -> None:
@@ -81,15 +90,17 @@ def call_handler(handler_name: str) -> None:
     # Fuck you.
     IOProvider().set_io(
         input_fn=input_fn,
-        output_fn=eel.js_output_fn,
+        output_fn=eel.js_output_fn, # type: ignore
     )
 
     handler_fn()
 
+# INIT ---------------------------------------------------
+ensure_dirs_and_files()
+
 # delete build directory if it exists
 if (SVELTE_PATH / "build").exists():
     shutil.rmtree(SVELTE_PATH / "build")
-
 
 # build svelte app
 os.system("cd wui && npm run build")

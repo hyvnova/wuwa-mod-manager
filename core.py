@@ -22,6 +22,7 @@ TEMP_FOLDER = DOWNLOADS_FOLDER / "_HWWMM_TEMP"  # Temporary folder for storing s
 SAVED_MODS_FOLDER = WWMI_FOLDER / "SavedMods" # Folder where mods are saved after installation
 ACTIVE_MODS_FOLDER = WWMI_FOLDER / "Mods" # Folder where active mods are copied to be used by the game
 DELETED_MODS_FOLDER = WWMI_FOLDER / "DeletedMods" # Folder where deleted mods are moved to, so that they can be restored later
+MOD_RES_FOLDER = WWMI_FOLDER / "ModResources" # Folder where UI resources are stored, images or icons
 
 # Not the smartest way I guess
 __app_directories__ = (
@@ -29,6 +30,7 @@ __app_directories__ = (
     SAVED_MODS_FOLDER,
     ACTIVE_MODS_FOLDER,
     DELETED_MODS_FOLDER,
+    MOD_RES_FOLDER
 )
 
 MODLIST_FILE = WWMI_FOLDER / "modlist.json" # File where the list of installed mods and groups are stored
@@ -37,9 +39,15 @@ MODLIST_FILE = WWMI_FOLDER / "modlist.json" # File where the list of installed m
 # This file will keep track of the allowed folder names, so that the user can install mods without a mod.ini file.
 ALLOWED_MODS_FILE = WWMI_FOLDER / "allowed_mods.json" 
 
+# UI resources for mods
+MODS_RESOURCES_FILE = WWMI_FOLDER / "mods_resources.json"  # File where the resources for the mods are stored
+
+
+# Path var: Initial Content
 __app_json_files__ = (
-    MODLIST_FILE,
-    ALLOWED_MODS_FILE,
+    (MODLIST_FILE, "[]"),
+    (ALLOWED_MODS_FILE, "[]"),
+    (MODS_RESOURCES_FILE, "{}"),
 )
 
 # Debug Paths
@@ -83,44 +91,14 @@ if not WWMI_FOLDER.exists():
     exit(1)
 
 
-"""
-WuWa Mod Manager
 
-1. Installing mods
-    Will read downloads folder to find the most recent .zip file, which is assumed to be a mod.
-    Then, this zip will be extracted to "SavedMods" folder.
-    An optional mod name will be asked, which will be used to rename the entry of the mod in modlist.json
-
-2. Deleting mods
-    Will read modlist.json to find the provided mod name and delete the corresponding folder in "SavedMods"
-    and "Mods" folders.
-
-3. Toggling mods
-    Presents the user with the installed-mods list and lets them
-    flip the **enabled/disabled** state of any subset in one go.
-    When a mod becomes **enabled** its files are copied from
-    "SavedMods" to "Mods"; when it becomes **disabled** its folder
-    is removed from "Mods".
-
-Mod names also work as group/paths.
-For example the name "carlotta<sep>black" means there's a mod named "black" in the "carlotta" group.
-This is used to toggle any other mods active in the same group, so that only one mod of the group can be active at a time.
-"""
-
-"""
-MODLIST Structure:
-
-[
-    {"name": "mod1", "path": ["SAVED_MODS_FOLDER/mod1"], "enabled": True},
-    {"name": "carlotta-black", "path": ["SAVED_MODS_FOLDER/carlotta-black/carlotta_weapon", "SAVED_MODS_FOLDER/carlotta-black/character"], "enabled": True},
-]
-
-"""
 
 
 # ----------------------------
 #  Data shapes
 # ----------------------------
+
+
 class ItemType(str, Enum):
     MOD = "mod"
     GROUP = "group"
@@ -222,6 +200,27 @@ class GroupObject:
 
 type ModList = List[ModObject | GroupObject]  # List of ModObjects or GroupObjects
 
+
+# ---------------------------- Mods Resources ----------------------------
+@dataclass
+class ModResource:
+    thumb: List[str] = field(default_factory=list)  # List of image paths
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "ModResource":
+        return cls(
+            thumb=list(data.get("thumb", [])),
+        )
+    
+    def to_dict(self) -> dict:
+        return {
+            "thumb": self.thumb,
+        }
+
+
+
+
+
 # ----------------------------
 #  JSON helpers
 # ----------------------------
@@ -254,6 +253,27 @@ def save_modlist(modlist: ModList) -> None:
         json.dump(serializable, fh, indent=4, ensure_ascii=False)
 
 
+
+def get_mod_resources() -> dict[str, ModResource]:
+    if not MODS_RESOURCES_FILE.exists():
+        return {}
+    try:
+        with MODS_RESOURCES_FILE.open(encoding="utf-8") as fh:
+            raw: dict[str, dict] = json.load(fh)
+    except (json.JSONDecodeError, OSError):
+        print("[ ! ] Corrupted mods_resources.json, resetting.")
+        save_mod_resources({})
+        return {}
+
+    return {name: ModResource.from_dict(data) for name, data in raw.items()}
+
+
+def save_mod_resources(resources: dict[str, ModResource]) -> None:
+    serializable = {name: res.to_dict() for name, res in resources.items()}
+    with MODS_RESOURCES_FILE.open("w", encoding="utf-8") as fh:
+        json.dump(serializable, fh, indent=4, ensure_ascii=False)
+
+
 # ----------------------------
 #  Boot-strapping
 # ----------------------------
@@ -264,9 +284,9 @@ def ensure_dirs_and_files() -> None:
             print(f"[ + ] Created directory: {directory}")
 
     # Ensure all json files exist
-    for json_file in __app_json_files__:
+    for json_file, init_content in __app_json_files__:
         if not json_file.exists():
-            json_file.write_text("[]", encoding="utf-8")
+            json_file.write_text(init_content, encoding="utf-8")
             print(f"[ + ] Created JSON file: {json_file}")
 
 

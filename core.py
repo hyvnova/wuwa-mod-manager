@@ -1,54 +1,13 @@
-from dataclasses import asdict, dataclass, field
-from enum import Enum
-import os
-from pathlib import Path
 
+from pathlib import Path
+from bisextypes import GroupObject, ItemType, ModList, ModObject, ModResource
 from get_input import get_confirmation
 from io_provider import IOProvider
 import json
-from typing import Any, List, Tuple
-
-# ----------------------------
-#  Paths & constants
-# ----------------------------
-USER_HOME = Path.home()
-
-APPDATA_FOLDER = Path(os.getenv("APPDATA", USER_HOME / "AppData" / "Roaming"))
-WWMI_FOLDER = APPDATA_FOLDER / "XXMI Launcher" / "WWMI" # XXMI Mod Installer folder 
-
-DOWNLOADS_FOLDER = USER_HOME / "Downloads"
-TEMP_FOLDER = DOWNLOADS_FOLDER / "_HWWMM_TEMP"  # Temporary folder for storing shit like stupid mod id because this stupid system can't handle that
-
-SAVED_MODS_FOLDER = WWMI_FOLDER / "SavedMods" # Folder where mods are saved after installation
-ACTIVE_MODS_FOLDER = WWMI_FOLDER / "Mods" # Folder where active mods are copied to be used by the game
-DELETED_MODS_FOLDER = WWMI_FOLDER / "DeletedMods" # Folder where deleted mods are moved to, so that they can be restored later
-MOD_RES_FOLDER = WWMI_FOLDER / "ModResources" # Folder where UI resources are stored, images or icons
-
-# Not the smartest way I guess
-__app_directories__ = (
-    TEMP_FOLDER,
-    SAVED_MODS_FOLDER,
-    ACTIVE_MODS_FOLDER,
-    DELETED_MODS_FOLDER,
-    MOD_RES_FOLDER
-)
-
-MODLIST_FILE = WWMI_FOLDER / "modlist.json" # File where the list of installed mods and groups are stored
-
-# Allowed folder names. Since some mods don't contain a mod.ini and intead have something like "modname.ini"
-# This file will keep track of the allowed folder names, so that the user can install mods without a mod.ini file.
-ALLOWED_MODS_FILE = WWMI_FOLDER / "allowed_mods.json" 
-
-# UI resources for mods
-MODS_RESOURCES_FILE = WWMI_FOLDER / "mods_resources.json"  # File where the resources for the mods are stored
+from typing import List, Tuple
 
 
-# Path var: Initial Content
-__app_json_files__ = (
-    (MODLIST_FILE, "[]"),
-    (ALLOWED_MODS_FILE, "[]"),
-    (MODS_RESOURCES_FILE, "{}"),
-)
+from constants import *
 
 # Debug Paths
 # print(f"{USER_HOME}")
@@ -93,134 +52,6 @@ if not WWMI_FOLDER.exists():
 
 
 
-
-# ----------------------------
-#  Data shapes
-# ----------------------------
-
-
-class ItemType(str, Enum):
-    MOD = "mod"
-    GROUP = "group"
-
-    def __str__(self) -> str:  # keeps old behaviour
-        return self.value
-
-    @classmethod
-    def from_str(cls, value: str) -> "ItemType":
-        try:
-            return cls(value)
-        except ValueError as exc:
-            raise ValueError(f"Invalid ItemType: {value}") from exc
-
-
-# ------------------------- ModObject -------------------------
-@dataclass
-class ModObject:
-    name: str
-    enabled: bool = False
-    path: List[str] = field(default_factory=list)
-    date: int = 0  # Unix epoch seconds
-    gb_id: str | None = None
-    type: ItemType = field(
-        default=ItemType.MOD,
-        init=False,  # never passed by user
-        repr=False,
-    )
-
-    # ---- collection protocol --------------------------------
-    def __len__(self) -> int:
-        return len(self.path)
-
-    # ---- (de)serialisation ----------------------------------
-    def to_dict(self) -> dict:
-        data = asdict(self)
-        data["type"] = self.type.value  # Enum  str
-        return data
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "ModObject":
-        return cls(
-            name=data["name"],
-            enabled=data.get("enabled", False),
-            path=list(data.get("path", [])),
-            date=int(data.get("date", 0)),
-            gb_id=data.get("gb_id"),
-        )
-
-    # Optional convenience wrappers around json.dumps/loads
-    def to_json(self, **json_kw: Any) -> str:
-        return json.dumps(self.to_dict(), **json_kw)
-
-    @classmethod
-    def from_json(cls, raw: str | bytes) -> "ModObject":
-        return cls.from_dict(json.loads(raw))
-
-
-# ------------------------ GroupObject ------------------------
-@dataclass
-class GroupObject:
-    name: str
-    enabled: bool = False
-    members: List[ModObject] = field(default_factory=list)
-    type: ItemType = field(
-        default=ItemType.GROUP,
-        init=False,
-        repr=False,
-    )
-
-    # ---- collection protocol --------------------------------
-    def __len__(self) -> int:
-        return len(self.members)
-
-    # ---- (de)serialisation ----------------------------------
-    def to_dict(self) -> dict:
-        return {
-            "type": self.type.value,
-            "name": self.name,
-            "enabled": self.enabled,
-            "members": [m.to_dict() for m in self.members],
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "GroupObject":
-        return cls(
-            name=data["name"],
-            enabled=data.get("enabled", False),
-            members=[ModObject.from_dict(m) for m in data.get("members", [])],
-        )
-
-    def to_json(self, **json_kw: Any) -> str:
-        return json.dumps(self.to_dict(), **json_kw)
-
-    @classmethod
-    def from_json(cls, raw: str | bytes) -> "GroupObject":
-        return cls.from_dict(json.loads(raw))
-
-
-type ModList = List[ModObject | GroupObject]  # List of ModObjects or GroupObjects
-
-
-# ---------------------------- Mods Resources ----------------------------
-@dataclass
-class ModResource:
-    thumb: List[str] = field(default_factory=list)  # List of image paths
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "ModResource":
-        return cls(
-            thumb=list(data.get("thumb", [])),
-        )
-    
-    def to_dict(self) -> dict:
-        return {
-            "thumb": self.thumb,
-        }
-
-
-
-
-
 # ----------------------------
 #  JSON helpers
 # ----------------------------
@@ -241,14 +72,14 @@ def get_modlist() -> ModList:
             continue
         item_type = item.get("type", "mod")
         if item_type == ItemType.GROUP.value:
-            out.append(GroupObject.from_dict(item))
+            out.append(GroupObject.from_dict(item)) # type: ignore
         else:
-            out.append(ModObject.from_dict(item))
+            out.append(ModObject.from_dict(item)) # type: ignore
     return out
 
 
 def save_modlist(modlist: ModList) -> None:
-    serializable = [m.to_dict() for m in modlist]
+    serializable = [m.to_dict() for m in modlist] # type: ignore
     with MODLIST_FILE.open("w", encoding="utf-8") as fh:
         json.dump(serializable, fh, indent=4, ensure_ascii=False)
 
@@ -278,13 +109,13 @@ def save_mod_resources(resources: dict[str, ModResource]) -> None:
 #  Boot-strapping
 # ----------------------------
 def ensure_dirs_and_files() -> None:
-    for directory in __app_directories__:
+    for directory in APP_DIRS:
         if not directory.exists():
-            directory.mkdir(parents=True, exist_ok=True)
+            directory.mkdir(parents=True, exist_ok=True) # type: ignore
             print(f"[ + ] Created directory: {directory}")
 
     # Ensure all json files exist
-    for json_file, init_content in __app_json_files__:
+    for json_file, init_content in APP_JSON_FILES:
         if not json_file.exists():
             json_file.write_text(init_content, encoding="utf-8")
             print(f"[ + ] Created JSON file: {json_file}")
@@ -312,7 +143,7 @@ def is_valid_mod_folder(folder: Path) -> Tuple[bool, str, List[Path]]:
     mod_dirs: List[Path] = [] # Keeps track of directories that contain a mod.ini file, the mods
 
     # Gather all .ini
-    for p in folder.rglob("*.ini"):
+    for p in folder.rglob("*.ini"): # type: ignore
         output_fn(f"\t[ / ] Found ini file: {p}")
 
         # If it's not a file, skip it

@@ -5,13 +5,12 @@ Web User Interface (WUI) for the WuWa Mod Manager.
 import os
 import shutil
 import eel
-from pathlib import Path
 
+
+from constants import WEBAPP_BUILD_PATH, WEBAPP_DIR_NAME, WEBAPP_PATH
+from bisex import BiSex
 from core import MOD_RES_FOLDER, MODLIST_FILE, MODS_RESOURCES_FILE, ModList, ModResource, ensure_dirs_and_files, get_mod_resources, get_modlist
 from io_provider import IOProvider
-
-SVELTE_PATH = Path(__file__).parent / "wui"
-
 from handlers import *
 
 
@@ -19,7 +18,18 @@ from handlers import *
 waiting_for_input = [True]
 recieved_input = ["No input recieved"]
 
+bisex = BiSex(
+    py_types="bisextypes.py",  # whatever static types you keep
+    js_types=WEBAPP_PATH / "src" / "lib" / "bisextypes.ts",
+)
+
 @eel.expose
+def perform_action(action: str) -> None:
+    pass
+
+
+@eel.expose
+@bisex.raw_fuck("EelService")  
 def py_get_input(value: str) -> None:
     """
     Expose a Python function to the Svelte frontend.
@@ -49,18 +59,25 @@ def input_fn() -> str:
     # print(f"Returning input: {value}")
     return value
 
+
 @eel.expose
+@bisex.raw_fuck("EelService")
 def py_raw_get_modlist() -> str:
     with open(MODLIST_FILE, "r", encoding="utf-8") as f:
         return f.read()
 
+
 @eel.expose
+@bisex.raw_fuck("EelService")
+
 def py_raw_get_mod_resources() -> str:
     with open(MODS_RESOURCES_FILE, "r", encoding="utf-8") as f:
         return f.read()
 
+
 @eel.expose
-def call_handler(handler_name: str) -> None:
+@bisex.raw_fuck("EelService")
+def py_call_handler(handler_name: str) -> None:
     """
     Expose a Python function to the Svelte frontend.
     This function will call the specified handler.
@@ -98,15 +115,17 @@ def call_handler(handler_name: str) -> None:
 # INIT ---------------------------------------------------
 ensure_dirs_and_files()
 
+bisex.perform()
+
 # delete build directory if it exists
-if (SVELTE_PATH / "build").exists():
-    shutil.rmtree(SVELTE_PATH / "build")
+if WEBAPP_BUILD_PATH.exists():
+    shutil.rmtree(WEBAPP_BUILD_PATH)
 
 # build svelte app
-os.system("cd wui && npm run build")
+os.system(f"cd {WEBAPP_DIR_NAME} && npm run build")
 
 eel.init(
-    str(SVELTE_PATH / "build"),
+    str(WEBAPP_BUILD_PATH),
     # svelte build
     allowed_extensions=[".js", ".html", ".ts", ".svelte"],
 )

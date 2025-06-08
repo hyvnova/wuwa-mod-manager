@@ -1,5 +1,31 @@
 @import 'tailwindcss';
 
+
+@keyframes breathing {
+    0% {
+        border-color: #3e4041;
+    }
+
+    50% {
+        border-color: #232526;
+    }
+
+    100% {
+        border-color: #0f1214;
+    }
+}
+
+.bit_text {
+    font-family: "DotGothic16", sans-serif;
+}
+
+/* Show checkbox only on card hover (or when checked) */
+.mod-card:hover .select-mod-checkbox,
+.select-mod-checkbox:checked {
+    opacity: 1;
+    transition: opacity 0.3s ease-in-out;
+}
+
 .message {
     font-family: "DotGothic16", monospace;
     overflow: hidden;

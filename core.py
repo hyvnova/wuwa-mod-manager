@@ -208,3 +208,13 @@ def is_valid_mod_folder(folder: Path) -> Tuple[bool, str, List[Path]]:
     # >1 distinct mod.ini-bearing folders ? multi-mods
     # Use the *parent* folder's name as representative label
     return (True, folder.name, mod_dirs)
+
+
+def item_from_dict(d: dict) -> ModObject | GroupObject:
+    """
+    Build a ModObject or GroupObject from a dictionary.
+    """
+    if d.get("type") == TypeOfItem.GROUP.value:
+        return GroupObject.from_dict(d)
+    else:
+        return ModObject.from_dict(d)

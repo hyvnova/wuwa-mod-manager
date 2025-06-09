@@ -4,8 +4,15 @@
 	import { derived, writable } from 'svelte/store';
 	import type { Readable, Writable } from 'svelte/store';
 
-	import { rebuild_modlist, handle_action, handleOutputFn, is_group, handleModlistUpdate } from '$lib';
-	import { eel, mod_resources, modlist, show_log_panel } from '$store/data';
+	import {
+		rebuild_modlist,
+		handle_action,
+		handleOutputFn,
+		is_group,
+		handleModlistUpdate,
+		handleInputFn
+	} from '$lib';
+	import { eel, getting_input, mod_resources, modlist, show_log_panel } from '$store/data';
 
 	import type { Eel } from '$lib/types';
 	import {
@@ -21,7 +28,16 @@
 	import { messages } from '$store/messages';
 	import { Splide, SplideSlide } from '@splidejs/svelte-splide';
 	import '@splidejs/svelte-splide/css';
-	import { Action, type GroupObject, type Item, type ModList, type ModObject } from '$lib/bisextypes';
+	import {
+		Action,
+		type GroupObject,
+		type Item,
+		type ModList,
+		type ModObject,
+
+		type ModResources
+
+	} from '$lib/bisextypes';
 
 	/* ───────────────────────────── Constants ─────────────────────────── */
 	const MOBILE_BREAKPOINT = 768; // px – Tailwind's md breakpoint.
@@ -83,9 +99,9 @@
 
 		eel.set(local_eel); // Set Eel instance for global access
 
+		handleInputFn();
 		handleOutputFn();
 		handleModlistUpdate();
-		
 
 		// Initial run ------------------------------------------------------
 		const mobile = viewportIsMobile();
@@ -114,7 +130,7 @@
 		local_eel
 			.py_raw_get_mod_resources()()
 			.then((result: string) => {
-				mod_resources.set(JSON.parse(result) as Record<string, string[]>);
+				mod_resources.set(JSON.parse(result) as ModResources);
 				// console.log("Mod resources:", JSON.parse(result));
 			})
 			.catch((error) => console.error('Failed to get mod resources:', error));
@@ -150,14 +166,28 @@
 	function handleModToggle(event: MouseEvent, modItem: Item) {
 		event.stopPropagation(); // Prevent card click event
 
+		handle_action(Action.Toggle, [modItem]);
+
 		// Optimistically update UI
 		modItem.enabled = !modItem.enabled;
-
-		handle_action(Action.Toggle, [modItem]);
 
 		// Ensure Svelte's reactivity picks up the change if derived stores depend on item properties
 		modlist.update((list) => list); // or $modlist = $modlist
 	}
+
+	getting_input.subscribe((getting) => {
+		if (getting) {
+			show_log_panel.set(true);
+			let val = prompt('Enter input:');
+			if (val !== null) {
+				$eel.py_get_input(val);
+			} else {
+				getting_input.set(false);
+			}
+		} else {
+			show_log_panel.set(false);
+		}
+	});
 </script>
 
 <main class="flex flex-col h-screen w-full bg-[#181A1B] p-1">
@@ -221,7 +251,18 @@
 	<!-- MAIN CONTENT -->
 	{#if $show_log_panel}
 		<!-- Log Output Section -->
-		<section class="content bg-[#232526] p-8 rounded-xl shadow-xl flex flex-col overflow-auto">
+		<section
+			class="content bg-[#232526] p-8 rounded-xl shadow-xl flex flex-col overflow-auto relative"
+		>
+			<!-- Close (X) button -->
+			<button
+				class="absolute top-3 right-3 text-gray-400 hover:text-gray-200 z-10"
+				title="Close log"
+				aria-label="Close log"
+				onclick={() => show_log_panel.set(false)}
+			>
+				<Fa icon={faTimes} />
+			</button>
 			<div
 				class="overflow-y-auto flex-1 bg-gradient-to-br from-[#232526] to-[#2c2f34] p-6 rounded-lg shadow-md flex flex-col items-center border border-gray-700"
 			>
@@ -234,7 +275,7 @@
 		bg-[#232526] text-gray-200
 		font-mono text-lg
 		shadow-sm
-  		border-x border-gray-700
+		border-x border-gray-700
 		w-full text-center"
 					>
 						{message}
@@ -286,7 +327,7 @@
 								speed: 500
 							}}
 						>
-							{#each $mod_resources[mod.name] || [DEFAULT_ICON] as imagePath, i}
+							{#each $mod_resources[mod.name]?.thumb || [DEFAULT_ICON] as imagePath, i}
 								<SplideSlide>
 									<img
 										src={imagePath}
@@ -481,7 +522,7 @@
 					title="Rename mod"
 					aria-label="Rename mod"
 					onclick={() => {
-						if ($selected) handle_action(Action.Rename, $selected);
+						handle_action(Action.Rename, $selected);
 					}}
 				>
 					<Fa icon={faEdit} />
@@ -494,7 +535,7 @@
 					title="Delete mod"
 					aria-label="Delete mod"
 					onclick={() => {
-						if ($selected) handle_action(Action.Delete, $selected);
+						handle_action(Action.Delete, $selected);
 					}}
 				>
 					<Fa icon={faTrash} />

@@ -149,3 +149,21 @@ class Action(Enum):
     Enable = "enable" # toggle all enabled
     Disable = "disable" # toggle all disabled
     CreateGroup = "create_group"
+
+
+    def __eq__(self, value: object) -> bool:
+        return super().__eq__(value)
+    
+    def __ne__(self, value: object) -> bool:
+        return super().__ne__(value)
+    
+    def __str__(self) -> str:
+        return self.value
+
+    @classmethod
+    def from_str(cls, value: str) -> "Action":
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Invalid Action: {value}") from exc
+        

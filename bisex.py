@@ -145,7 +145,7 @@ def _anno_to_ts(anno: Any) -> str:
     if isinstance(anno, type):
         return _map_primitive(anno.__name__)
     if hasattr(anno, "__name__"):
-        return _map_primitive(anno.__name__)
+        return _map_primitive(anno.__name__) # type: ignore
     return "any"
 
 # --------------------  CONVERTERS  --------------------
@@ -236,6 +236,23 @@ class BiSex:
 
     # decorator
     def raw_fuck(self, interface: str | type):  # noqa: N802
+        """
+        A decorator to register a function as a handler for a specific interface.
+        Meaning, the signature of the function will be translated as a field in a specific interface.
+
+        # Usage
+        ```python
+        @bisex.raw_fuck("Nyasu")
+        def my_handler(arg1: str, arg2: int) -> None:
+            pass
+        ```
+        Translates to
+        ```typescript
+        export interface Nyasu {
+          my_handler: (arg1: string, arg2: number) => null;
+        }
+        ```
+        """
         iface = interface if isinstance(interface, str) else interface.__name__
 
         def deco(func):

@@ -7,7 +7,7 @@ from typing import Iterable, Generator
 from core import (
     ACTIVE_MODS_FOLDER,
     SAVED_MODS_FOLDER,
-    ItemType,
+    TypeOfItem,
     ModList,
     ModObject,
     get_modlist,
@@ -29,7 +29,7 @@ def _get_multimod_paths(
     """
     s = set()
     for mod in modlist:
-        if mod.type != ItemType.MOD:
+        if mod.type != TypeOfItem.MOD:
             continue
 
         if len(mod.path) > 2: # type: ignore
@@ -168,7 +168,7 @@ def rebuild_handler(*, delete_invalid: bool = True) -> None:
         m.name
         for m in modlist
         if isinstance(m, ModObject) and len(m.path) == 1 and m.path[0] in multipath_set
-        and m.type == ItemType.MOD
+        and m.type == TypeOfItem.MOD
     }
 
     for n in to_drop:
@@ -185,7 +185,7 @@ def rebuild_handler(*, delete_invalid: bool = True) -> None:
     for mod in modlist: # type: ignore
 
         # This should only ever apply to single-mods, otherwise BIG FUCKING PROBLEM 
-        if not isinstance(mod, ModObject) or not len(mod.path) == 1 or mod.type != ItemType.MOD:
+        if not isinstance(mod, ModObject) or not len(mod.path) == 1 or mod.type != TypeOfItem.MOD:
             continue
 
         mod: ModObject = mod  # type: ignore

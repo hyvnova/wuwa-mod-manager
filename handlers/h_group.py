@@ -1,7 +1,7 @@
 from typing import Callable, List
 
 from io_provider import IOProvider
-from core import GroupObject, ItemType, ModList, ModObject, get_modlist, save_modlist
+from core import GroupObject, TypeOfItem, ModList, ModObject, get_modlist, save_modlist
 from get_input import get_menu_input
 
 
@@ -25,7 +25,7 @@ def group_handler() -> None:
     sel = get_menu_input(
         prompt="Indexes of mods to group (space-separated): ",
         zero_option_text="[ 0 ] Auto make group by name similarity",
-        options=[m.name for m in modlist if m.type == ItemType.MOD],
+        options=[m.name for m in modlist if m.type == TypeOfItem.MOD],
         space_separated=True,
     )
     sel = (sel,) if isinstance(sel, int) else sel

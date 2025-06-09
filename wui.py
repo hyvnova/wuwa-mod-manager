@@ -4,9 +4,11 @@ Web User Interface (WUI) for the WuWa Mod Manager.
 
 import os
 import shutil
+from typing import List
 import eel
 
 
+from bisextypes import Action, Item, TypeOfItem
 from constants import WEBAPP_BUILD_PATH, WEBAPP_DIR_NAME, WEBAPP_PATH
 from bisex import BiSex
 from core import MOD_RES_FOLDER, MODLIST_FILE, MODS_RESOURCES_FILE, ModList, ModResource, ensure_dirs_and_files, get_mod_resources, get_modlist
@@ -24,9 +26,9 @@ bisex = BiSex(
 )
 
 @eel.expose
-def perform_action(action: str) -> None:
+@bisex.raw_fuck("EelService")
+def py_perform_action(action: Action, selected: List[Item]) -> None:
     pass
-
 
 @eel.expose
 @bisex.raw_fuck("EelService")  

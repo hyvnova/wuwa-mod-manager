@@ -9,7 +9,7 @@ from get_input import get_menu_input
 from core import (
     DOWNLOADS_FOLDER,
     SAVED_MODS_FOLDER,
-    ItemType,
+    TypeOfItem,
     ModObject,
     get_modlist,
     is_valid_mod_folder,
@@ -139,7 +139,7 @@ def install_handler() -> None:
     for name, paths in chosen.items():
 
         # Check if the mod already exists in the modlist
-        existing: ModObject = next((m for m in modlist if m.name == name and m.type == ItemType.MOD), None) # type: ignore
+        existing: ModObject = next((m for m in modlist if m.name == name and m.type == TypeOfItem.MOD), None) # type: ignore
         str_paths = [str(p) for p in paths]
 
         if existing:

@@ -4,16 +4,10 @@
 	import { derived, writable } from 'svelte/store';
 	import type { Readable, Writable } from 'svelte/store';
 
-	import {
-		handle_group_action,
-		handle_rebuild_modlist,
-		handle_single_action,
-		handleOutputFn,
-		isGroup
-	} from '$lib';
+	import { rebuild_modlist, handle_action, handleOutputFn, is_group, handleModlistUpdate } from '$lib';
 	import { eel, mod_resources, modlist, show_log_panel } from '$store/data';
 
-	import type { Eel, Group, Item, Mod, Modlist } from '$lib/types';
+	import type { Eel } from '$lib/types';
 	import {
 		faCog,
 		faEdit,
@@ -27,12 +21,13 @@
 	import { messages } from '$store/messages';
 	import { Splide, SplideSlide } from '@splidejs/svelte-splide';
 	import '@splidejs/svelte-splide/css';
+	import { Action, type GroupObject, type Item, type ModList, type ModObject } from '$lib/bisextypes';
 
 	/* ───────────────────────────── Constants ─────────────────────────── */
 	const MOBILE_BREAKPOINT = 768; // px – Tailwind's md breakpoint.
 
 	/** Multiple‑selection list. */
-	export const multiSelected: Writable<Mod[]> = writable([]);
+	export const multiSelected: Writable<ModObject[]> = writable([]);
 	/** Single selected mod (details panel). */
 	export const selected: Writable<Item | null> = writable(null);
 
@@ -49,13 +44,13 @@
 	 * Derived list of mods after search + enabled filter.
 	 * Reactively updates whenever either store changes.
 	 */
-	const matchedMods: Readable<Modlist> = derived<
-		[Writable<Modlist>, Writable<string>, Writable<string>],
-		Modlist
+	const matchedMods: Readable<ModList> = derived<
+		[Writable<ModList>, Writable<string>, Writable<string>],
+		ModList
 	>(
 		[modlist, searchQuery, enabledFilter],
 		([$modlist, $q, $filter]) => {
-			let list: Modlist = $modlist;
+			let list: ModList = $modlist;
 
 			// 1) Text search --------------------------------------------------
 			if ($q.trim()) {
@@ -89,6 +84,8 @@
 		eel.set(local_eel); // Set Eel instance for global access
 
 		handleOutputFn();
+		handleModlistUpdate();
+		
 
 		// Initial run ------------------------------------------------------
 		const mobile = viewportIsMobile();
@@ -110,7 +107,7 @@
 		local_eel
 			.py_raw_get_modlist()()
 			.then((result: string) => {
-				modlist.set(JSON.parse(result) as Modlist);
+				modlist.set(JSON.parse(result) as ModList);
 			})
 			.catch((error) => console.error('Failed to get modlist:', error));
 
@@ -122,11 +119,10 @@
 			})
 			.catch((error) => console.error('Failed to get mod resources:', error));
 
-
 		/**
 		 * If log panel it's open,
-		 * When Enter or Escape is pressed, close it. 
- 		*/
+		 * When Enter or Escape is pressed, close it.
+		 */
 		const handleKeydown = (event: KeyboardEvent) => {
 			if ($show_log_panel && (event.key === 'Enter' || event.key === 'Escape')) {
 				show_log_panel.set(false);
@@ -157,7 +153,7 @@
 		// Optimistically update UI
 		modItem.enabled = !modItem.enabled;
 
-		handle_single_action('toggle', modItem);
+		handle_action(Action.Toggle, [modItem]);
 
 		// Ensure Svelte's reactivity picks up the change if derived stores depend on item properties
 		modlist.update((list) => list); // or $modlist = $modlist
@@ -189,7 +185,7 @@
 				class="inline-flex items-center justify-center rounded-md bg-[#818CF8] p-2 text-white transition-colors duration-200 hover:bg-[#4338CA]"
 				title="Rebuild modlist"
 				aria-label="Rebuild modlist"
-				onclick={handle_rebuild_modlist}
+				onclick={rebuild_modlist}
 			>
 				<Fa icon={faCog} />
 				<span class="ml-2">Rebuild Modlist</span>
@@ -237,7 +233,7 @@
 		px-4 py-2
 		bg-[#232526] text-gray-200
 		font-mono text-lg
-		shadow-sm 
+		shadow-sm
   		border-x border-gray-700
 		w-full text-center"
 					>
@@ -246,7 +242,6 @@
 				{/each}
 			</div>
 		</section>
-
 	{:else}
 		<!-- ─────────────────────────── Mod Grid ─────────────────────────── -->
 		<section class="my-4 grid max-w-3xl grid-cols-4 gap-4 self-center">
@@ -260,7 +255,7 @@
 					onclick={() => handleModCardClick(mod)}
 					onkeydown={(e) => e.key === 'Enter' && handleModCardClick(mod)}
 					class="mod-card relative flex flex-col items-center justify-center rounded-md border border-[#3b4264] bg-[#08060c] py-2 shadow-md transition-all hover:scale-105 hover:border-[#94aee6] hover:bg-[#11111c] hover:shadow-lg"
-					class:col-span-2={isGroup(mod)}
+					class:col-span-2={is_group(mod)}
 					class:border-2={$selected?.name === mod.name}
 					class:border-indigo-500={$selected?.name === mod.name}
 					class:bg-[#1a1a2b]={$selected?.name === mod.name}
@@ -325,9 +320,9 @@
 							aria-label="Select mod"
 							onchange={() => {
 								multiSelected.update((list) =>
-									list.some((m) => m.name === (mod as Mod).name)
-										? list.filter((m) => m.name !== (mod as Mod).name)
-										: [...list, mod as Mod]
+									list.some((m) => m.name === (mod as ModObject).name)
+										? list.filter((m) => m.name !== (mod as ModObject).name)
+										: [...list, mod as ModObject]
 								);
 							}}
 						/>
@@ -337,7 +332,7 @@
 		</section>
 	{/if}
 
-	<!-- ─────────────────────── Bulk‑action Panel ─────────────────────── -->
+	<!-- ─────────────────────── Multi Panel ─────────────────────── -->
 	{#if $multiSelected.length}
 		<!-- FAB (mobile) -------------------------------------------------->
 		{#if $isMobile && !$showPanel}
@@ -374,7 +369,7 @@
 						class="bit_text inline-flex items-center justify-center rounded-md bg-indigo-600 p-2 text-white transition-colors duration-200 hover:bg-indigo-700"
 						title="Create group from selected mods"
 						aria-label="Create group from selected mods"
-						onclick={() => handle_group_action('create_group', multiSelected)}
+						onclick={() => handle_action(Action.CreateGroup, $multiSelected)}
 					>
 						<Fa icon={faList} />
 						<span class="ml-2">Create Group</span>
@@ -387,7 +382,7 @@
 						class="bit_text inline-flex items-center justify-center rounded-md bg-indigo-600 p-2 text-white transition-colors duration-200 hover:bg-indigo-700"
 						title="Rename selected mods"
 						aria-label="Rename selected mods"
-						onclick={() => handle_group_action('rename', multiSelected)}
+						onclick={() => handle_action(Action.Rename, $multiSelected)}
 					>
 						<Fa icon={faEdit} />
 						<span class="ml-2">Rename Selected Mods</span>
@@ -400,7 +395,7 @@
 						class="bit_text inline-flex items-center justify-center rounded-md bg-green-600 p-2 text-white transition-colors duration-200 hover:bg-green-700 w-1/2"
 						title="Enable selected mods"
 						aria-label="Enable selected mods"
-						onclick={() => handle_group_action('toggle_on', multiSelected)}
+						onclick={() => handle_action(Action.Enable, $multiSelected)}
 					>
 						<Fa icon={faToggleOn} />
 						<span class="ml-2">Enable</span>
@@ -410,7 +405,7 @@
 						class="bit_text inline-flex items-center justify-center rounded-md bg-red-600 p-2 text-white transition-colors duration-200 hover:bg-red-700 w-1/2"
 						title="Disable selected mods"
 						aria-label="Disable selected mods"
-						onclick={() => handle_group_action('toggle_off', multiSelected)}
+						onclick={() => handle_action(Action.Disable, $multiSelected)}
 					>
 						<Fa icon={faToggleOff} />
 						<span class="ml-2">Disable</span>
@@ -423,7 +418,7 @@
 						class="bit_text inline-flex items-center justify-center rounded-md bg-red-600 p-2 text-white transition-colors duration-200 hover:bg-red-700"
 						title="Delete selected mods"
 						aria-label="Delete selected mods"
-						onclick={() => handle_group_action('delete', multiSelected)}
+						onclick={() => handle_action(Action.Delete, $multiSelected)}
 					>
 						<Fa icon={faTrash} />
 						<span class="ml-2">Delete</span>
@@ -443,7 +438,7 @@
 		{/if}
 	{/if}
 
-	<!-- ─────────────────────── Single‑mod Details ────────────────────── -->
+	<!-- ─────────────────────── Single Panel  ────────────────────── -->
 	{#if $selected}
 		<!-- $selected is Mod | null -->
 		{#if $isMobile && !$showSinglePanel}
@@ -486,7 +481,7 @@
 					title="Rename mod"
 					aria-label="Rename mod"
 					onclick={() => {
-						if ($selected) handle_single_action('rename', $selected);
+						if ($selected) handle_action(Action.Rename, $selected);
 					}}
 				>
 					<Fa icon={faEdit} />
@@ -499,7 +494,7 @@
 					title="Delete mod"
 					aria-label="Delete mod"
 					onclick={() => {
-						if ($selected) handle_single_action('delete', $selected);
+						if ($selected) handle_action(Action.Delete, $selected);
 					}}
 				>
 					<Fa icon={faTrash} />
@@ -509,7 +504,7 @@
 				<!-- Details -->
 				<div class="mb-2">
 					<span class="font-semibold text-gray-400 text-lg">
-						{#if isGroup($selected)}
+						{#if is_group($selected)}
 							Group Members:
 						{:else}
 							Mod Paths:
@@ -517,15 +512,15 @@
 					</span>
 					<ul class="list-inside list-disc text-sm text-gray-300">
 						<!-- Group detail : members -->
-						{#if isGroup($selected)}
-							{#each ($selected as Group).members as m}
+						{#if is_group($selected)}
+							{#each ($selected as GroupObject).members as m}
 								<li class="bit_text text-sm">
 									{m.name}
 								</li>
 							{/each}
 						{:else}
 							<!-- Mod detail : paths -->
-							{#each ($selected as Mod).path as p}
+							{#each ($selected as ModObject).path as p}
 								<li class="bit_text text-sm">
 									{p}
 								</li>

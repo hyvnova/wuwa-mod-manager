@@ -1,6 +1,6 @@
 
 from pathlib import Path
-from bisextypes import GroupObject, ItemType, ModList, ModObject, ModResource
+from bisextypes import GroupObject, TypeOfItem, ModList, ModObject, ModResource
 from get_input import get_confirmation
 from io_provider import IOProvider
 import json
@@ -71,7 +71,7 @@ def get_modlist() -> ModList:
         if not isinstance(item, dict) or "name" not in item:
             continue
         item_type = item.get("type", "mod")
-        if item_type == ItemType.GROUP.value:
+        if item_type == TypeOfItem.GROUP.value:
             out.append(GroupObject.from_dict(item)) # type: ignore
         else:
             out.append(ModObject.from_dict(item)) # type: ignore

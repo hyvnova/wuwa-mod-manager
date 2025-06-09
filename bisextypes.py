@@ -1,5 +1,6 @@
+from ast import Delete
 from dataclasses import asdict, dataclass, field
-import enum
+from enum import Enum
 import json
 from typing import Any, List
 
@@ -7,7 +8,7 @@ from typing import Any, List
 # ----------------------------
 #  Data shapes
 # ----------------------------
-class ItemType(str, enum.Enum):
+class TypeOfItem(str, Enum): # weird name becasue of confusion with `Item` type
     MOD = "mod"
     GROUP = "group"
 
@@ -15,11 +16,11 @@ class ItemType(str, enum.Enum):
         return self.value
 
     @classmethod
-    def from_str(cls, value: str) -> "ItemType":
+    def from_str(cls, value: str) -> "TypeOfItem":
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(f"Invalid ItemType: {value}") from exc
+            raise ValueError(f"Invalid TypeOfItem: {value}") from exc
 
 
 # ------------------------- ModObject -------------------------
@@ -30,8 +31,8 @@ class ModObject:
     path: List[str] = field(default_factory=list)
     date: int = 0  # Unix epoch seconds
     gb_id: str | None = None
-    type: ItemType = field(
-        default=ItemType.MOD,
+    type: TypeOfItem = field(
+        default=TypeOfItem.MOD,
         init=False,  # never passed by user
         repr=False,
     )
@@ -71,8 +72,8 @@ class GroupObject:
     name: str
     enabled: bool = False
     members: List[ModObject] = field(default_factory=list)
-    type: ItemType = field(
-        default=ItemType.GROUP,
+    type: TypeOfItem = field(
+        default=TypeOfItem.GROUP,
         init=False,
         repr=False,
     )
@@ -105,8 +106,8 @@ class GroupObject:
     def from_json(cls, raw: str | bytes) -> "GroupObject":
         return cls.from_dict(json.loads(raw))
 
-
-type ModList = list[ModObject | GroupObject]  # List of ModObjects or GroupObjects
+type Item = ModObject | GroupObject  # Union of ModObject and GroupObject
+type ModList = list[Item]  # List of ModObjects or GroupObjects
 
 
 # ---------------------------- Mods Resources ----------------------------
@@ -127,9 +128,24 @@ class ModResource:
 
 type ModResources = dict[str, ModResource]  # Dict of mod name → ModResource
 
-class Handler(enum.Enum):
+class Handler(Enum):
     """
     Enum for handler names.
     This is used to call the correct handler function from the Svelte frontend.
     """
     Rebuild = "rebuild_handler"
+
+
+class Action(Enum):
+    """
+    Enum for possible actions when selecting a single mod or group or multiple mods. 
+    This is used to call the correct action function from the Svelte frontend.
+    """
+    Rename = "rename"
+
+    Delete = "delete"
+    Toggle = "toggle"
+
+    Enable = "enable" # toggle all enabled
+    Disable = "disable" # toggle all disabled
+    CreateGroup = "create_group"

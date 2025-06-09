@@ -6,7 +6,7 @@ from core import (
     ACTIVE_MODS_FOLDER,
     SAVED_MODS_FOLDER,
     GroupObject,
-    ItemType,
+    TypeOfItem,
     ModObject,
     get_modlist,
     save_modlist,
@@ -79,10 +79,10 @@ def toggle_handler() -> None:
         item.enabled = not item.enabled
 
         if item.enabled:
-            if item.type == ItemType.GROUP:
+            if item.type == TypeOfItem.GROUP:
                 # Activate the whole group
                 _activate_group(item) # type: ignore
-            elif item.type == ItemType.MOD:
+            elif item.type == TypeOfItem.MOD:
                 _activate_mod(item) # type: ignore
 
             else:
@@ -92,14 +92,14 @@ def toggle_handler() -> None:
 
             paths: List[Path] = []
             match item.type:
-                case ItemType.GROUP:
+                case TypeOfItem.GROUP:
                     paths = [
                                 Path(p) for m in item.members  # type: ignore
                                 for p in m.path
                             ]
                     break
                     
-                case ItemType.MOD:
+                case TypeOfItem.MOD:
                     paths = [Path(p) for p in item.path] # type: ignore
                     break
 

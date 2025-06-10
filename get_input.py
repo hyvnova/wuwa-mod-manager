@@ -14,7 +14,7 @@ def get_menu_input(
     The caller decides whether multiple picks are allowed (``space_separated``).
 
     • If the user types **numbers** → those numbers are taken as 1-based indexes
-      (0 is the special “zero option”).
+      (0 is the special "zero option").
     • If the user types **text** → we fuzzy-match each token against the option list
       with ``most_similar_option`` and take the closest hit.
 
@@ -24,6 +24,8 @@ def get_menu_input(
         a single index (when ``space_separated=False``)
     tuple[int, ...]
         many indexes in input order with duplicates removed
+
+    # This is the menu fairy: it lets users pick options by number or by typing (even badly), so the UI is always friendly and forgiving.
     """
 
     (input_fn, output_fn) = IOProvider().get_io()
@@ -103,6 +105,8 @@ def get_confirmation(
 ) -> bool:
     """
     Gets a confirmation from the user
+
+    # This is the little guardian: it makes sure the user really means it before doing something dangerous (like deleting mods or their hopes).
     """
     (input_fn, output_fn) = IOProvider().get_io()
 

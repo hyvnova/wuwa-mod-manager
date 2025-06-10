@@ -4,6 +4,7 @@ import re
 # ------------------------------------------------------------
 #  Normalisation helpers
 # ------------------------------------------------------------
+# These helpers make user input forgiving and cute: they ignore case, punctuation, and word order, so users can type like gremlins and still get what they want.
 _non_alnum = re.compile(r"[^a-z0-9\s]+")
 
 
@@ -25,11 +26,13 @@ def most_similar_option(
 ) -> Optional[str]:
     """
     Return the option most similar to *target*.
-    • Uses RapidFuzz’s token_set_ratio if available (best quality / speed)
+    • Uses RapidFuzz's token_set_ratio if available (best quality / speed)
     • Falls back to difflib SequenceMatcher.
     • Normalises strings: case-insensitive, ignores punctuation, order-agnostic.
 
     *cutoff* (0-100) – minimum similarity required, or None if no match.
+
+    # This is the fuzzy genie: it grants wishes even if you type like a goblin, matching what you meant, not what you wrote.
     """
 
     # ----  Pre-process ------------------------------------------------------

@@ -5,6 +5,8 @@ This "input buffer" which it's not technically a buffer but I don't care it's a,
 
 meaning, 
 if you call input() it will return the first value in the buffer, instead of waiting for user input.
+
+# This class is the input fairy: it lets you sneak values into the next input() call, so you can automate stuff or make the web UI work without blocking.
 """
 
 
@@ -15,6 +17,8 @@ class InputBuffer:
     """
     InputBuffer is a singleton class that holds a list of input values that have priority over user input.
     It allows you to set values that will be returned on the next input call, bypassing the need for user interaction.
+
+    # This is the magic queue: if you want to feed input to the app (from JS, tests, or automation), just push here and the next input() will use it.
     """
 
     _instance = None

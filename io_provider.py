@@ -10,7 +10,8 @@ class IOProvider:
      - input -- Callable[[], str]
     - output -- Callable[[str], None]
 
-    This provider it's used to make core functionally agnostic to the input/output -- UI.
+    # This class is the IO chameleon: it lets the core logic talk to any UI (console, web, etc) without knowing or caring.
+    # It also lets you swap input/output on the fly, so you can automate, test, or just be fancy.
     """
     _instance = None
 
@@ -25,6 +26,7 @@ class IOProvider:
         """
         Wrapper for the input function to give priority to the input buffer.
         Checks (and consumes) the input buffer on EACH call.
+        # This is the secret sauce: if there's a value in the buffer, use it instead of asking the user. Great for automation and web UI!
         """
         def wrapped_input():
             v = InputBuffer().pop()
@@ -38,6 +40,7 @@ class IOProvider:
     ) -> None:
         self.input_fn = self._set_input_wrapper(input_fn)
         self.output_fn = output_fn
+        # This lets you swap input/output at runtime, so the same logic works everywhere (and you can test things easily).
 
     def get_io(self) -> Tuple[Callable[[], str], Callable[[str], None]]:
         if not callable(self.input_fn) or not callable(self.output_fn):

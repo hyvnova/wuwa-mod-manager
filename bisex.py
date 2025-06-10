@@ -2,9 +2,12 @@
 """
 bysex.py – *BiSex* builder
 ==========================
-*Python → TypeScript types*
+*Python → TypeScript types*
 
 ---
+
+# This file is the type diplomat: it negotiates peace between Python and TypeScript,
+# so your backend and frontend always speak the same language (and you never get bit by a type mismatch).
 
 Usage reminder (unchanged)
 ```python
@@ -27,6 +30,7 @@ from typing import Any, Final, List, get_args, get_origin
 from constants import WEBAPP_PATH
 
 # -------------------------  PRIMITIVE MAP  -------------------------
+# This is the Rosetta Stone: it translates Python primitives to TypeScript, so types always match.
 PY_PRIMITIVE_TO_TS: Final[dict[str, str]] = {
     "str": "string",
     "int": "number",
@@ -41,11 +45,13 @@ PY_PRIMITIVE_TO_TS: Final[dict[str, str]] = {
 
 
 def _map_primitive(name: str) -> str:
+    # This is the universal translator: it maps Python type names to their TS equivalents.
     return PY_PRIMITIVE_TO_TS.get(name, name)
 
 
 def _ts_from_ast(expr: ast.AST) -> str:
     """Translate a *type expression* (AST) into a TS type string."""
+    # This function is the heart of the type wizardry: it recursively turns Python type ASTs into TS type strings.
 
     match expr:
         case ast.Name(id=name):
@@ -101,6 +107,7 @@ def _anno_to_ts(anno: Any) -> str:
     Translate a *runtime* annotation (or a simple name string) into
     a TypeScript type string.
     """
+    # This is the runtime type whisperer: it figures out what a Python annotation means, and says it in TypeScript.
     # ---- simple cases --------------------------------------------------
     if isinstance(anno, str):  # bare name
         return _map_primitive(anno)
@@ -150,6 +157,7 @@ def _anno_to_ts(anno: Any) -> str:
 
 
 def _convert_enum(node: ast.ClassDef) -> str:
+    # This turns Python enums into TS enums, so you can switch on actions in both worlds.
     lines = [f"export enum {node.name} {{"]
     for assign in (n for n in node.body if isinstance(n, ast.Assign)):
         key = assign.targets[0].id  # type: ignore[arg-type]
@@ -164,6 +172,7 @@ def _convert_enum(node: ast.ClassDef) -> str:
 
 
 def _convert_dataclass(node: ast.ClassDef) -> str:
+    # This turns Python dataclasses into TS interfaces, so your data is always shaped right.
     annos = {
         n.target.id: n.annotation
         for n in node.body
@@ -176,6 +185,7 @@ def _convert_dataclass(node: ast.ClassDef) -> str:
 
 
 def _convert_typealias(node: Any) -> str:  # ast.TypeAlias
+    # This turns Python type aliases into TS type aliases, for max code reuse.
     name = node.name.id  # type: ignore[attr-defined]
     rhs = _ts_from_ast(node.value)  # type: ignore[attr-defined]
     return f"export type {name} = {rhs};"
@@ -185,6 +195,7 @@ def _convert_typealias(node: Any) -> str:  # ast.TypeAlias
 
 
 def _base_is_enum(base: ast.expr) -> bool:
+    # This checks if a class is an Enum, so we know how to convert it.
     return (isinstance(base, ast.Name) and base.id == "Enum") or (
         isinstance(base, ast.Attribute) and base.attr == "Enum"
     )
@@ -194,6 +205,7 @@ def _base_is_enum(base: ast.expr) -> bool:
 
 
 def _python_file_to_ts(path: Path) -> str:
+    # This is the big spell: it reads a Python file and spits out TypeScript types.
     if not path.exists():
         return ""
     tree = ast.parse(path.read_text("utf-8"))
@@ -215,6 +227,7 @@ def _python_file_to_ts(path: Path) -> str:
 
 class BiSex:
     """Collect decorator‑captured functions and static types → single TS file."""
+    # This class is the type ambassador: it collects all the types and exposed functions, and writes them to TS.
 
     def __init__(
         self,

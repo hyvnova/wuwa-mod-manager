@@ -4,6 +4,7 @@ from pathlib import Path
 # ----------------------------
 #  Paths & constants
 # ----------------------------
+# All the important folders and files live here, so you only have to change things in one place if you move stuff around.
 USER_HOME = Path.home()
 
 APPDATA_FOLDER = Path(os.getenv("APPDATA", USER_HOME / "AppData" / "Roaming"))
@@ -59,7 +60,7 @@ APP_JSON_FILES = (
 
 
 # ---------------------------- Webapp Paths & Contants ----------------------------
-
+# All the webapp paths live here, so the backend and frontend can always find each other (and you can move the webapp if you want).
 # This will assume the webapp directory is in the same directory as this script.
 WEBAPP_DIR_NAME = "webapp"
 WEBAPP_PATH = Path(__file__).parent / WEBAPP_DIR_NAME

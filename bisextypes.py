@@ -8,6 +8,7 @@ from typing import Any, List
 # ----------------------------
 #  Data shapes
 # ----------------------------
+# This is the heart of the data model: everything the mod manager touches is shaped here, so both backend and frontend agree on what a mod is.
 class TypeOfItem(str, Enum): # weird name becasue of confusion with `Item` type
     MOD = "mod"
     GROUP = "group"
@@ -26,6 +27,7 @@ class TypeOfItem(str, Enum): # weird name becasue of confusion with `Item` type
 # ------------------------- ModObject -------------------------
 @dataclass
 class ModObject:
+    # This is the atomic mod: every mod is one of these, with a name, path, and a little metadata.
     name: str
     enabled: bool = False
     path: List[str] = field(default_factory=list)
@@ -43,12 +45,14 @@ class ModObject:
 
     # ---- (de)serialisation ----------------------------------
     def to_dict(self) -> dict:
+        # This is the serializer: it turns a ModObject into a dict for JSON, always including the type.
         data = asdict(self)
         data["type"] = self.type.value  # Enum  -> str
         return data
 
     @classmethod
     def from_dict(cls, data: dict) -> "ModObject":
+        # This is the deserializer: it builds a ModObject from a dict, so you can load from JSON.
         return cls(
             name=data["name"],
             enabled=data.get("enabled", False),
@@ -59,16 +63,19 @@ class ModObject:
 
     # Optional convenience wrappers around json.dumps/loads
     def to_json(self, **json_kw: Any) -> str:
+        # This is a cute wrapper for json.dumps, so you can get a JSON string of your mod.
         return json.dumps(self.to_dict(), **json_kw)
 
     @classmethod
     def from_json(cls, raw: str | bytes) -> "ModObject":
+        # This is a cute wrapper for json.loads, so you can build a mod from a JSON string.
         return cls.from_dict(json.loads(raw))
 
 
 # ------------------------ GroupObject ------------------------
 @dataclass
 class GroupObject:
+    # This is a group of mods: it acts like a mod, but contains other mods (for batch operations and cuteness).
     name: str
     enabled: bool = False
     members: List[ModObject] = field(default_factory=list)
@@ -84,6 +91,7 @@ class GroupObject:
 
     # ---- (de)serialisation ----------------------------------
     def to_dict(self) -> dict:
+        # This is the serializer: it turns a GroupObject into a dict for JSON, always including the type and all members.
         return {
             "type": self.type.value,
             "name": self.name,
@@ -93,6 +101,7 @@ class GroupObject:
 
     @classmethod
     def from_dict(cls, data: dict) -> "GroupObject":
+        # This is the deserializer: it builds a GroupObject from a dict, so you can load from JSON.
         return cls(
             name=data["name"],
             enabled=data.get("enabled", False),
@@ -100,10 +109,12 @@ class GroupObject:
         )
 
     def to_json(self, **json_kw: Any) -> str:
+        # This is a cute wrapper for json.dumps, so you can get a JSON string of your group.
         return json.dumps(self.to_dict(), **json_kw)
 
     @classmethod
     def from_json(cls, raw: str | bytes) -> "GroupObject":
+        # This is a cute wrapper for json.loads, so you can build a group from a JSON string.
         return cls.from_dict(json.loads(raw))
 
 type Item = ModObject | GroupObject  # Union of ModObject and GroupObject
@@ -113,15 +124,18 @@ type ModList = list[Item]  # List of ModObjects or GroupObjects
 # ---------------------------- Mods Resources ----------------------------
 @dataclass
 class ModResource:
+    # This is the resource bundle for a mod: mostly images, but could be anything cute you want to show in the UI.
     thumb: list[str] = field(default_factory=list)  # List of image paths
 
     @classmethod
     def from_dict(cls, data: dict) -> "ModResource":
+        # This is the deserializer: it builds a ModResource from a dict, so you can load from JSON.
         return cls(
             thumb=list(data.get("thumb", [])),
         )
 
     def to_dict(self) -> dict:
+        # This is the serializer: it turns a ModResource into a dict for JSON.
         return {
             "thumb": self.thumb,
         }
@@ -133,6 +147,7 @@ class Handler(Enum):
     Enum for handler names.
     This is used to call the correct handler function from the Svelte frontend.
     """
+    # This enum is the phonebook: it maps handler names to their Python functions, so the frontend can call them by name.
     Rebuild = "rebuild_handler"
 
 
@@ -141,6 +156,7 @@ class Action(Enum):
     Enum for possible actions when selecting a single mod or group or multiple mods. 
     This is used to call the correct action function from the Svelte frontend.
     """
+    # This enum is the action menu: it lists everything the user can do to a mod or group, so the UI and backend always agree.
     Rename = "rename"
 
     Delete = "delete"
@@ -159,6 +175,9 @@ class Action(Enum):
     
     def __str__(self) -> str:
         return self.value
+    
+    def __hash__(self) -> int:
+        return hash(self.value)
 
     @classmethod
     def from_str(cls, value: str) -> "Action":

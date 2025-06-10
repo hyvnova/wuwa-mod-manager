@@ -1,4 +1,3 @@
-
 from pathlib import Path
 from bisextypes import GroupObject, TypeOfItem, ModList, ModObject, ModResource
 from get_input import get_confirmation
@@ -56,6 +55,7 @@ if not WWMI_FOLDER.exists():
 #  JSON helpers
 # ----------------------------
 def get_modlist() -> ModList:
+    # This loads the modlist from disk, and tries to recover if it's corrupted.
     if not MODLIST_FILE.exists():
         return []
     try:
@@ -79,6 +79,7 @@ def get_modlist() -> ModList:
 
 
 def save_modlist(modlist: ModList) -> None:
+    # Save the modlist to disk, always as pretty JSON (for human debugging and cuteness).
     serializable = [m.to_dict() for m in modlist] # type: ignore
     with MODLIST_FILE.open("w", encoding="utf-8") as fh:
         json.dump(serializable, fh, indent=4, ensure_ascii=False)
@@ -86,6 +87,7 @@ def save_modlist(modlist: ModList) -> None:
 
 
 def get_mod_resources() -> dict[str, ModResource]:
+    # Loads mod resources (like thumbnails) from disk, with corruption recovery.
     if not MODS_RESOURCES_FILE.exists():
         return {}
     try:
@@ -100,6 +102,7 @@ def get_mod_resources() -> dict[str, ModResource]:
 
 
 def save_mod_resources(resources: dict[str, ModResource]) -> None:
+    # Save mod resources to disk, always as pretty JSON.
     serializable = {name: res.to_dict() for name, res in resources.items()}
     with MODS_RESOURCES_FILE.open("w", encoding="utf-8") as fh:
         json.dump(serializable, fh, indent=4, ensure_ascii=False)
@@ -109,6 +112,7 @@ def save_mod_resources(resources: dict[str, ModResource]) -> None:
 #  Boot-strapping
 # ----------------------------
 def ensure_dirs_and_files() -> None:
+    # This is the boot ritual: make sure all folders and JSON files exist, so the app never crashes on startup.
     for directory in APP_DIRS:
         if not directory.exists():
             directory.mkdir(parents=True, exist_ok=True) # type: ignore
@@ -126,9 +130,8 @@ def ensure_dirs_and_files() -> None:
 # - ----------------------------
 def is_valid_mod_folder(folder: Path) -> Tuple[bool, str, List[Path]]:
     """
-    Determine whether *folder* is a valid mod folder.
-
-    Returns (status, representative_name, [paths_with_mod_ini])
+    This function is the bouncer for mod folders. It checks if a folder is a real mod, and asks the user if it's not sure.
+    It also remembers allowed folders, so you don't get asked twice (unless you want to, you masochist).
     """
 
     output_fn = IOProvider().get_output()
@@ -211,6 +214,7 @@ def is_valid_mod_folder(folder: Path) -> Tuple[bool, str, List[Path]]:
 
 
 def item_from_dict(d: dict) -> ModObject | GroupObject:
+    # This is the shape-shifter: it builds the right object (mod or group) from a dict, so you never have to care.
     """
     Build a ModObject or GroupObject from a dictionary.
     """

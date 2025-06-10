@@ -2,16 +2,22 @@
 Web User Interface (WUI) for the WuWa Mod Manager.
 """
 
+# This file is the magical bridge between Python and the Svelte frontend.
+# It exposes backend logic to the browser, so your mods can be managed with style (and less pain).
+
 import os
+from pathlib import Path
 from pprint import pprint
 import shutil
 from typing import Any, List
 import eel
 
-from bisextypes import Action, GroupObject, Item, ModObject
-from constants import WEBAPP_BUILD_PATH, WEBAPP_DIR_NAME, WEBAPP_PATH
+from bisextypes import Action, GroupObject, Item, ModObject, TypeOfItem
+from constants import ACTIVE_MODS_FOLDER, DELETED_MODS_FOLDER, SAVED_MODS_FOLDER, WEBAPP_BUILD_PATH, WEBAPP_DIR_NAME, WEBAPP_PATH
 from bisex import BiSex
 from core import MODLIST_FILE, MODS_RESOURCES_FILE, item_from_dict, ensure_dirs_and_files, get_modlist, save_modlist
+from handler_caller import call_handler
+from input_buffer import InputBuffer
 from io_provider import IOProvider
 from handlers import *
 
@@ -25,6 +31,7 @@ IOProvider().set_io(
 waiting_for_input = [False]
 recieved_input = ["No input recieved"]
 
+# BiSex is the type wizard: it keeps Python and TypeScript types in sync, so you never have to guess what an Item is.
 bisex = BiSex(
     py_types="bisextypes.py",  # whatever static types you keep
     js_types=WEBAPP_PATH / "src" / "lib" / "bisextypes.ts",
@@ -35,8 +42,8 @@ bisex = BiSex(
 @bisex.raw_fuck("EelService")  
 def py_get_input(value: str) -> None:
     """
-    Expose a Python function to the Svelte frontend.
-    This function will be called from JS to send input back to Python.
+    This is the callback JS calls when the user gives input in the browser.
+    It unblocks the Python-side input loop, so the backend can keep going.
     """
     # print(f"Received input from JS: {value}")
     
@@ -45,6 +52,9 @@ def py_get_input(value: str) -> None:
     waiting_for_input[0] = False
 
 def input_fn() -> str:
+    # This function is called when Python needs input from the user, but we're in a browser!
+    # So we poke JS, then sleep until JS pokes us back (see above).
+    # It's a little dance, but it works.
     # tell js we want input
     eel.js_request_input() # type: ignore
 
@@ -67,11 +77,10 @@ def input_fn() -> str:
 @bisex.raw_fuck("EelService")
 def py_perform_action(action: str, sel: List[dict[Any, Any]]) -> None:
     """
-    Perform an action (e.g., toggle) on a selection of mod items.
-    Args:
-        action: The action to perform, as a string (e.g., "toggle").
-        sel: A list of dicts representing selected items from the frontend.
+    This is the main entrypoint for mod actions from the frontend.
+    It takes a string action and a list of selected items, and does the right thing.
     """
+    # IOProvider is set to use the web input/output, so all prompts go to the browser.
     IOProvider().set_io(
         input_fn=input_fn,
         output_fn=eel.js_output_fn,  # type: ignore
@@ -79,110 +88,85 @@ def py_perform_action(action: str, sel: List[dict[Any, Any]]) -> None:
 
     print = IOProvider().get_output()
 
+    # Validate input
+    if not sel:
+        print("No items selected for action")
+        return
+
     # Load the current modlist from file
     ml = get_modlist()
 
     # Convert the selection from dicts to Item objects
     selected: List[Item] = list(map(item_from_dict, sel))
 
-    # Perform the requested action
-    match Action.from_str(action):
-        case Action.Toggle:
-            # Toggle the 'enabled' state for each selected item
-            for item in selected:
-                try:
-                    # Find the corresponding item in the modlist by equality
-                    item_ref = ml[ml.index(item)]
-                    item_ref.enabled = not item_ref.enabled
-                except ValueError:
-                    # Item not found in modlist; skip or log as needed
-                    print(f"Item not found in modlist: {item}")
+    # Get indices of selected items in modlist
+    indices = []
+    for item in selected:
+        try:
+            idx = ml.index(item) + 1  # +1 because handlers use 1-based indexing
+            indices.append(idx)
+        except ValueError:
+            print(f"Item not found in modlist: {item}")
+            continue
 
-        case Action.Enable:
-            # Enable all selected items
-            for item in selected:
-                try:
-                    item_ref = ml[ml.index(item)]
-                    item_ref.enabled = True
-                except ValueError:
-                    print(f"Item not found in modlist: {item}")
+    if not indices:
+        return
 
-        case Action.Disable:
-            # Disable all selected items
-            for item in selected:
-                try:
-                    item_ref = ml[ml.index(item)]
-                    item_ref.enabled = False
-                except ValueError:
-                    print(f"Item not found in modlist: {item}")
+    # Convert indices to space-separated string for handlers
+    indices_str = " ".join(map(str, indices))
 
-        case Action.Delete:
-            # Remove selected items from modlist
-            for item in selected:
-                try:
-                    ml.remove(item)
-                except ValueError:
-                    print(f"Item not found in modlist for deletion: {item}")
+    # Map frontend actions to handler names
+    handler_map = {
+        Action.Toggle: "toggle",
+        Action.Enable: "toggle",  # Enable is handled by toggle handler
+        Action.Disable: "toggle",  # Disable is handled by toggle handler
+        Action.Delete: "delete",
+        Action.Rename: "rename",
+        Action.CreateGroup: "group",
+    }
 
-        case Action.Rename:
-            # Rename item (assuming single selection for rename)
-            if len(selected) == 1:
-                item = selected[0]
-                print(f"Renaming item: {item.name}")
-                try:
-                    item_ref = ml[ml.index(item)]
-                    # Request new name from frontend
-                    name = input_fn().strip() # Get input from JS and strip whitespace
+    try:
+        # Get the handler name for this action
+        action_enum = Action.from_str(action)
+        handler_name = handler_map[action_enum]
 
-                    if not name:
-                        print("Rename action cancelled or empty name provided")
-                        return
-
-                    # Update the name of the item
-                    item_ref.name = name
-                    print(f"Item renamed to: {name}")
-
-                except ValueError:
-                    print(f"Item not found in modlist for rename: {item}")
-            else:
+        # Special handling for rename action
+        if action_enum == Action.Rename:
+            if len(selected) != 1:
                 print("Rename action requires exactly one selected item")
+                return
+            
+            # Get new name from frontend
+            name = input_fn().strip()
+            if not name:
+                print("Rename action cancelled or empty name provided")
+                return
 
-        case Action.CreateGroup:
-            # Create a group from selected ModObjects
-            if len(selected) > 1:
-                # Filter only ModObjects (can't group groups)
-                mod_objects = [item for item in selected if isinstance(item, ModObject)]
-                if mod_objects:
-                    # Create new group
-                    group_name = f"Group_{len([item for item in ml if isinstance(item, GroupObject)]) + 1}"
-                    new_group = GroupObject(
-                        name=group_name,
-                        enabled=any(mod.enabled for mod in mod_objects),
-                        members=mod_objects,
-                    )
+            # Check if name already exists
+            if any(m.name == name for m in ml if m != selected[0]):
+                print(f"Name '{name}' is already in use")
+                return
 
-                    # Remove individual mods from modlist and add group
-                    for mod in mod_objects:
-                        try:
-                            ml.remove(mod)
-                        except ValueError:
-                            pass
-                    ml.append(new_group)
-                else:
-                    print("No valid ModObjects selected for grouping")
-            else:
-                print("Create group requires multiple selected items")
+            # Push both the index and the new name to the input buffer
+            InputBuffer().push(indices_str, name)
+        else:
+            # For other actions, just push the indices
+            InputBuffer().push(indices_str)
+        
+        # Call the appropriate handler
+        call_handler(handler_name)
 
-        case _:
-            print(f"Unhandled action: {action}")
-
-    # Save the updated modlist back to file
-    save_modlist(ml)
+    except (KeyError, ValueError) as e:
+        print(f"Invalid action or handler not found: {e}")
+        return
 
     # Notify the frontend to update its modlist view
-    with open(MODLIST_FILE, "r", encoding="utf-8") as f:
-        data = f.read()
-        eel.js_update_modlist(data)  # type: ignore
+    try:
+        with open(MODLIST_FILE, "r", encoding="utf-8") as f:
+            data = f.read()
+            eel.js_update_modlist(data)  # type: ignore
+    except Exception as e:
+        print(f"Failed to update frontend: {e}")
 
 @eel.expose
 @bisex.raw_fuck("EelService")
@@ -202,10 +186,9 @@ def py_raw_get_mod_resources() -> str:
 @bisex.raw_fuck("EelService")
 def py_call_handler(handler_name: str) -> None:
     """
-    Expose a Python function to the Svelte frontend.
-    This function will call the specified handler.
+    This lets the frontend call any handler by name (like 'install', 'delete', etc).
+    It's a little dangerous, but very flexible. (Validation is minimal, so be careful!)
     """
-
     # Some nasty validation to make sure handler_name exists, THIS IS A CRIME
     handler_name = handler_name.strip().lower().replace(" ", "_")
 
@@ -241,6 +224,7 @@ def py_call_handler(handler_name: str) -> None:
     handler_fn()
 
 # INIT ---------------------------------------------------
+# This is the startup ritual: make sure all folders/files exist, sync types, and clean up old builds.
 ensure_dirs_and_files()
 
 bisex.perform()

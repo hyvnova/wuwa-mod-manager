@@ -215,47 +215,48 @@
 	});
 </script>
 
-<main class="flex flex-col min-h-screen w-full bg-bg p-4 md:p-8">
+<main class="flex flex-col h-screen w-full bg-bg p-1">
 	<!-- ─────────────────────────── Header ─────────────────────────── -->
 	<header
 		aria-label="Main header"
-		class="mx-auto flex flex-col items-center justify-center rounded-retro-lg p-8 bg-surface/40 backdrop-blur-sm border border-border/20 shadow-retro"
+		class="mx-auto flex flex-col items-center justify-center rounded-md p-6"
 	>
-		<h1 class="mb-4 text-3xl font-serif font-bold tracking-tight text-text-primary">
-			<span class="italic text-accent">Hyvnt's</span> WuWa Mod Manager
+		<h1 class="mb-3 text-2xl font-serif font-bold tracking-tight text-gray-100">
+			<span class="italic text-indigo-300">Hyvnt's</span> WuWa Mod Manager
 		</h1>
-		<p class="mb-6 font-light text-text-secondary text-lg">
+		<p class="mb-6 font-light text-text-secondary">
 			A stupid piece of software, done by stupid motherfucker
-			<span class="italic text-accent/80">Enjoy the suffering.</span>
-			<span class="italic text-accent/60">Sucker.</span>
+			<span class="italic text-indigo-200">Enjoy the suffering.</span>
+			<span class="italic text-indigo-300">Sucker.</span>
 		</p>
 	</header>
 
-	<!-- ─────────────────────────── Special Options ────────────────────────── -->
-	<section class="flex w-full max-w-2xl flex-col items-center self-center mt-8">
-		<div class="mb-6 flex w-full flex-row items-center justify-between">
+	<!-- ─────────────────────────── Special Optiosn ────────────────────────── -->
+
+	<section class="flex w-full max-w-xl flex-col items-center self-center">
+		<div class="mb-4 flex w-full flex-row items-center justify-between">
 			<!-- Rebuild Modlist -->
 			<button
-				class="inline-flex items-center justify-center rounded-retro bg-surface-2 px-4 py-2 text-text-primary transition-all duration-200 hover:bg-accent/20 hover:text-accent border border-border/20 shadow-retro"
+				class="inline-flex items-center justify-center rounded-md bg-[#818CF8] p-2 text-white transition-colors duration-200 hover:bg-[#4338CA]"
 				title="Rebuild modlist"
 				aria-label="Rebuild modlist"
 				onclick={rebuild_modlist}
 			>
-				<Fa icon={faCog} class="text-lg" />
-				<span class="ml-2 font-medium">Rebuild Modlist</span>
+				<Fa icon={faCog} />
+				<span class="ml-2">Rebuild Modlist</span>
 			</button>
 		</div>
 	</section>
 
 	<!-- ─────────────────────────── Filters ─────────────────────────── -->
-	<section class="mt-8 flex w-full max-w-2xl flex-col items-center self-center">
-		<form class="flex w-full flex-row items-center justify-between gap-4">
+	<section class="mt-8 flex w-full max-w-xl flex-col items-center self-center">
+		<form class="flex w-full flex-row items-center justify-between">
 			<!-- Search ------------------------------------------------------- -->
 			<input
 				type="text"
 				placeholder="Search mods..."
 				bind:value={$searchQuery}
-				class="w-full rounded-retro border border-border/20 bg-surface/40 p-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent/50 focus:border-accent/50 transition-all duration-200 shadow-retro"
+				class="w-full rounded-md border border-gray-600 bg-bg p-3 text-gray-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
 				aria-label="Search mods"
 			/>
 
@@ -263,7 +264,7 @@
 			<select
 				bind:value={$enabledFilter}
 				aria-label="Filter by mod status"
-				class="rounded-retro border border-border/20 bg-surface/40 p-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent/50 transition-all duration-200 shadow-retro"
+				class="ml-4 rounded border border-gray-600 bg-bg p-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
 			>
 				<option value="all" selected>All</option>
 				<option value="enabled">Enabled</option>
@@ -276,31 +277,31 @@
 	{#if $show_log_panel}
 		<!-- Log Output Section -->
 		<section
-			class="content bg-surface/40 p-8 rounded-retro-lg shadow-retro-lg flex flex-col overflow-auto relative border border-border/20 backdrop-blur-sm"
+			class="content bg-surface p-8 rounded-xl shadow-xl flex flex-col overflow-auto relative"
 		>
 			<!-- Close (X) button -->
 			<button
-				class="absolute top-4 right-4 text-text-secondary hover:text-text-primary transition-colors duration-200 z-10"
+				class="absolute top-3 right-3 text-text-secondary hover:text-gray-200 z-10"
 				title="Close log"
 				aria-label="Close log"
 				onclick={() => show_log_panel.set(false)}
 			>
-				<Fa icon={faTimes} class="text-xl" />
+				<Fa icon={faTimes} />
 			</button>
 			<div
-				class="overflow-y-auto flex-1 bg-surface-2/40 p-6 rounded-retro shadow-retro flex flex-col items-center border border-border/20"
+				class="overflow-y-auto flex-1 bg-gradient-to-br from-[#232526] to-[#2c2f34] p-6 rounded-lg shadow-md flex flex-col items-center border border-gray-700"
 			>
 				{#each $messages as message}
 					<div
 						class="message typing-effect
-						min-h-[30px]
-						h-auto
-						px-4 py-2
-						bg-surface/40 text-text-primary
-						font-mono text-lg
-						shadow-retro
-						border-x border-border/20
-						w-full text-center"
+		min-h-[30px]
+		h-auto
+		px-4 py-2
+		bg-surface text-gray-200
+		font-mono text-lg
+		shadow-sm
+		border-x border-gray-700
+		w-full text-center"
 					>
 						{message}
 					</div>
@@ -309,7 +310,7 @@
 		</section>
 	{:else}
 		<!-- ─────────────────────────── Mod Grid ─────────────────────────── -->
-		<section class="my-8 grid max-w-4xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 self-center">
+		<section class="my-4 grid max-w-3xl grid-cols-4 gap-4 self-center">
 			{#each $matchedMods as mod (mod.name)}
 				<!-- Card wrapper ------------------------------------------------- -->
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -319,11 +320,18 @@
 					tabindex="0"
 					onclick={() => handleModCardClick(mod)}
 					onkeydown={(e) => e.key === 'Enter' && handleModCardClick(mod)}
-					class="mod-card relative flex flex-col items-center justify-center rounded-retro border border-border/20 bg-surface/40 p-4 shadow-retro transition-all duration-300 hover:scale-[1.02] hover:border-accent/50 hover:bg-surface-2/40 hover:shadow-retro-lg {is_group(mod) ? 'col-span-2' : ''} {$selected?.name === mod.name ? 'border-2 border-accent bg-surface-3/60 hover:bg-surface-3/80' : 'hover:border-accent'}"
+					class="mod-card relative flex flex-col items-center justify-center rounded-md border border-[#3b4264] bg-[#08060c] py-2 shadow-md transition-all hover:scale-105 hover:border-accent hover:bg-surface-2. hover:shadow-lg"
+					class:col-span-2={is_group(mod)}
+					class:border-2={$selected?.name === mod.name}
+					class:border-indigo-500={$selected?.name === mod.name}
+					class:bg-[#1a1a2b]={$selected?.name === mod.name}
+					class:hover:bg-[#1e1e34]={$selected?.name === mod.name}
+					class:hover:border-accent={$selected?.name !== mod.name}
 				>
-					<div class="mb-3 flex w-full items-center justify-between p-1" title={mod.name}>
+					<!-- Card title -------------------------------------------------- -->
+					<div class="mb-2 flex w-full items-center justify-between p-1" title={mod.name}>
 						<h4
-							class="bit_text flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-center text-lg font-medium text-text-primary"
+							class="bit_text flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-center text-lg"
 						>
 							{mod.name}
 						</h4>
@@ -349,7 +357,7 @@
 									<img
 										src={imagePath}
 										alt={`${mod.name} icon ${i + 1}`}
-										class="h-32 w-32 rounded-retro object-contain"
+										class="h-32 w-32 rounded-md object-contain"
 									/>
 								</SplideSlide>
 							{/each}
@@ -362,7 +370,7 @@
 						title={mod.enabled ? 'Enabled' : 'Disabled'}
 						aria-label={mod.enabled ? 'Enabled' : 'Disabled'}
 						onclick={(event) => handleModToggle(event, mod)}
-						class="absolute bottom-3 right-3 h-4 w-4 rounded-tl-full transition-all duration-300 hover:scale-200 hover:border-2 hover:border-border"
+						class="absolute bottom-2 right-2 h-4 w-4 rounded-tl-full transition-all duration-300 hover:scale-200 hover:border-2 hover:border-gray-300"
 						class:bg-success={mod.enabled}
 						class:bg-error={!mod.enabled}
 					/>
@@ -372,7 +380,7 @@
 						<!-- Only show checkbox for Mods, not Groups -->
 						<input
 							type="checkbox"
-							class="select-mod-checkbox absolute top-3 left-3 h-5 w-5 appearance-none rounded-br-full border-2 border-border bg-surface-2 opacity-0 transition-all duration-300 hover:bg-accent/20 focus:outline-none focus:ring-2 focus:ring-accent/50 checked:border-accent checked:bg-accent/40"
+							class="select-mod-checkbox absolute top-2 left-2 h-6 w-6 appearance-none rounded-br-full border-2 border-gray-500 bg-gray-700 opacity-0 transition-all duration-300 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 checked:border-indigo-400 checked:bg-indigo-500"
 							checked={$multiSelected.some((m) => m.name === mod.name)}
 							title="Select mod"
 							aria-label="Select mod"
@@ -395,98 +403,98 @@
 		<!-- FAB (mobile) -------------------------------------------------->
 		{#if $isMobile && !$showPanel}
 			<button
-				class="fixed bottom-6 left-6 z-50 rounded-full bg-surface-2 p-4 text-text-primary shadow-retro-lg transition-all duration-300 hover:bg-accent/20 hover:text-accent border border-border/20"
+				class="fixed bottom-4 left-4 z-50 rounded-full bg-indigo-600 p-3 text-white shadow-lg transition-colors duration-200 hover:bg-indigo-700"
 				title="Toggle Mod Panel"
 				aria-label="Toggle Mod Panel"
 				onclick={() => showPanel.set(true)}
 			>
-				<Fa icon={faList} class="text-xl" />
+				<Fa icon={faList} />
 			</button>
 		{/if}
 
 		{#if $showPanel}
 			<aside
 				id="mod-panel"
-				class="fixed left-6 top-8 z-50 h-[94vh] w-[calc(100vw-3rem)] max-w-xl rounded-retro-lg border border-border/20 bg-surface/40 p-6 backdrop-blur-md shadow-retro-lg md:max-w-md lg:max-w-xl"
+				class="fixed left-6 top-8 z-50 h-[94vh] w-[calc(100vw-3rem)] max-w-xl rounded-xl border border-gray-700 bg-[#221f23]/60 p-4 backdrop-blur-md shadow-2xl md:max-w-md lg:max-w-xl"
 			>
 				<!-- Close / clear selection ---------------------------------- -->
 				<button
-					class="absolute right-4 top-4 text-text-secondary hover:text-text-primary transition-colors duration-200 w-6 h-6"
+					class="absolute right-2 top-2 text-text-secondary transition-colors hover:text-gray-200 w-5 h-5"
 					title="Clear selection"
 					aria-label="Clear selection"
 					onclick={() => {
 						multiSelected.set([]);
 					}}
 				>
-					<Fa icon={faTimes} class="text-xl" />
+					<Fa icon={faTimes} />
 				</button>
 
 				<!-- Create group -------------------------------------------- -->
-				<div class="my-6 flex flex-col space-y-3">
+				<div class="my-4 flex flex-col space-y-2">
 					<button
-						class="bit_text inline-flex items-center justify-center rounded-retro bg-surface-2 px-4 py-2 text-text-primary transition-all duration-200 hover:bg-accent/20 hover:text-accent border border-border/20 shadow-retro"
+						class="bit_text inline-flex items-center justify-center rounded-md bg-indigo-600 p-2 text-white transition-colors duration-200 hover:bg-indigo-700"
 						title="Create group from selected mods"
 						aria-label="Create group from selected mods"
 						onclick={() => handle_action(Action.CreateGroup, $multiSelected)}
 					>
-						<Fa icon={faList} class="text-lg" />
-						<span class="ml-2 font-medium">Create Group</span>
+						<Fa icon={faList} />
+						<span class="ml-2">Create Group</span>
 					</button>
 				</div>
 
 				<!-- Rename group --------------------------------------------- -->
-				<div class="my-6 flex flex-col space-y-3">
+				<div class="my-4 flex flex-col space-y-2">
 					<button
-						class="bit_text inline-flex items-center justify-center rounded-retro bg-surface-2 px-4 py-2 text-text-primary transition-all duration-200 hover:bg-accent/20 hover:text-accent border border-border/20 shadow-retro"
+						class="bit_text inline-flex items-center justify-center rounded-md bg-indigo-600 p-2 text-white transition-colors duration-200 hover:bg-indigo-700"
 						title="Rename selected mods"
 						aria-label="Rename selected mods"
 						onclick={() => handle_action(Action.Rename, $multiSelected)}
 					>
-						<Fa icon={faEdit} class="text-lg" />
-						<span class="ml-2 font-medium">Rename Selected Mods</span>
+						<Fa icon={faEdit} />
+						<span class="ml-2">Rename Selected Mods</span>
 					</button>
 				</div>
 
 				<!-- Toggle enabled state ------------------------------------- -->
-				<div class="my-6 flex flex-row w-full space-x-3">
+				<div class="my-4 flex flex-row w-full space-x-2">
 					<button
-						class="bit_text inline-flex items-center justify-center rounded-retro bg-surface-2 px-4 py-2 text-text-primary transition-all duration-200 hover:bg-success/20 hover:text-success border border-border/20 shadow-retro w-1/2"
+						class="bit_text inline-flex items-center justify-center rounded-md bg-green-600 p-2 text-white transition-colors duration-200 hover:bg-green-700 w-1/2"
 						title="Enable selected mods"
 						aria-label="Enable selected mods"
 						onclick={() => handle_action(Action.Enable, $multiSelected)}
 					>
-						<Fa icon={faToggleOn} class="text-lg" />
-						<span class="ml-2 font-medium">Enable</span>
+						<Fa icon={faToggleOn} />
+						<span class="ml-2">Enable</span>
 					</button>
 
 					<button
-						class="bit_text inline-flex items-center justify-center rounded-retro bg-surface-2 px-4 py-2 text-text-primary transition-all duration-200 hover:bg-error/20 hover:text-error border border-border/20 shadow-retro w-1/2"
+						class="bit_text inline-flex items-center justify-center rounded-md bg-red-600 p-2 text-white transition-colors duration-200 hover:bg-red-700 w-1/2"
 						title="Disable selected mods"
 						aria-label="Disable selected mods"
 						onclick={() => handle_action(Action.Disable, $multiSelected)}
 					>
-						<Fa icon={faToggleOff} class="text-lg" />
-						<span class="ml-2 font-medium">Disable</span>
+						<Fa icon={faToggleOff} />
+						<span class="ml-2">Disable</span>
 					</button>
 				</div>
 
 				<!-- Danger zone ---------------------------------------------- -->
-				<div class="my-8 flex flex-col space-y-3">
+				<div class="my-8 flex flex-col space-y-2">
 					<button
-						class="bit_text inline-flex items-center justify-center rounded-retro bg-surface-2 px-4 py-2 text-text-primary transition-all duration-200 hover:bg-error/20 hover:text-error border border-border/20 shadow-retro"
+						class="bit_text inline-flex items-center justify-center rounded-md bg-red-600 p-2 text-white transition-colors duration-200 hover:bg-red-700"
 						title="Delete selected mods"
 						aria-label="Delete selected mods"
-						onclick={() => handle_action(Action.Delete, $multiSelected)}
+						onclick={(event) => $selected && handleModDelete(event, $selected)}
 					>
-						<Fa icon={faTrash} class="text-lg" />
-						<span class="ml-2 font-medium">Delete</span>
+						<Fa icon={faTrash} />
+						<span class="ml-2">Delete</span>
 					</button>
 				</div>
 
 				<!-- Selected list -------------------------------------------- -->
 				<div class="mb-4 overflow-y-auto">
-					<h4 class="mb-3 text-center text-lg font-semibold text-text-primary">Selected Mods</h4>
-					<ul class="list-inside list-decimal overflow-auto text-md text-text-secondary">
+					<h4 class="mb-2 text-center text-lg font-semibold text-gray-200">Selected Mods</h4>
+					<ul class="list-inside list-decimal overflow-auto text-md text-gray-300">
 						{#each $multiSelected as m}
 							<li class="bit_text text-md">{m.name}</li>
 						{/each}
@@ -501,33 +509,33 @@
 		<!-- $selected is Mod | null -->
 		{#if $isMobile && !$showSinglePanel}
 			<button
-				class="fixed bottom-6 right-6 z-50 rounded-full bg-surface-2 p-4 text-text-primary shadow-retro-lg transition-all duration-300 hover:bg-accent/20 hover:text-accent border border-border/20"
+				class="fixed bottom-4 right-4 z-50 rounded-full bg-indigo-600 p-3 text-white shadow-lg transition-colors duration-200 hover:bg-indigo-700"
 				title="Toggle Mod Details"
 				aria-label="Toggle Mod Details"
 				onclick={() => showSinglePanel.set(true)}
 			>
-				<Fa icon={faList} class="text-xl" />
+				<Fa icon={faList} />
 			</button>
 		{/if}
 
 		{#if $showSinglePanel}
 			<aside
 				id="mod-details-panel"
-				class="flex flex-col fixed right-6 top-8 z-50 min-w-[320px] max-w-[400px] rounded-retro-lg border border-border/20 bg-surface/40 p-6 backdrop-blur-md shadow-retro-lg"
+				class="flex flex-col fixed right-6 top-8 z-50 min-w-[320px] max-w-[400px] rounded-xl border border-gray-700 bg-surface/60 p-4 backdrop-blur-md shadow-2xl"
 			>
 				<!-- Close ----------------------------------------------------- -->
 				<button
-					class="absolute right-4 top-4 text-text-secondary hover:text-text-primary transition-colors duration-200"
+					class="absolute right-2 top-2 text-text-secondary transition-colors hover:text-gray-200"
 					title="Close details"
 					aria-label="Close details"
 					onclick={() => {
 						selected.set(null);
 					}}
 				>
-					<Fa icon={faTimes} class="text-xl" />
+					<Fa icon={faTimes} />
 				</button>
 
-				<h3 class="bit_text mb-4 text-center text-2xl font-bold text-text-primary">
+				<h3 class="bit_text mb-2 text-center text-xl font-bold text-gray-100">
 					{$selected.name}
 				</h3>
 
@@ -535,26 +543,26 @@
 
 				<!-- Rename -------------------------------------------- -->
 				<button
-					class="bit_text mb-4 inline-flex items-center justify-center rounded-retro bg-surface-2 px-4 py-2 text-text-primary transition-all duration-200 hover:bg-accent/20 hover:text-accent border border-border/20 shadow-retro"
+					class="bit_text mb-4 inline-flex items-center justify-center rounded-md bg-indigo-600 p-2 text-white transition-colors duration-200 hover:bg-indigo-700"
 					title="Rename mod"
 					aria-label="Rename mod"
 					onclick={(event) => {
 						handle_action(Action.Rename, $selected);
 					}}
 				>
-					<Fa icon={faEdit} class="text-lg" />
-					<span class="ml-2 font-medium">Rename</span>
+					<Fa icon={faEdit} />
+					<span class="ml-2">Rename</span>
 				</button>
 
 				<!--Delete -------------------------------------------- -->
 				<button
-					class="bit_text mb-6 inline-flex items-center justify-center rounded-retro bg-surface-2 px-4 py-2 text-text-primary transition-all duration-200 hover:bg-error/20 hover:text-error border border-border/20 shadow-retro"
+					class="bit_text mb-4 inline-flex items-center justify-center rounded-md bg-red-600 p-2 text-white transition-colors duration-200 hover:bg-red-700"
 					title="Delete mod"
 					aria-label="Delete mod"
-					onclick={(event) => $selected && handleModDelete(event, $selected)}
+					onclick={(event) => handleModDelete(event, $selected)}
 				>
-					<Fa icon={faTrash} class="text-lg" />
-					<span class="ml-2 font-medium">Delete</span>
+					<Fa icon={faTrash} />
+					<span class="ml-2">Delete</span>
 				</button>
 
 				<!-- Details -->
@@ -566,7 +574,7 @@
 							Mod Paths:
 						{/if}
 					</span>
-					<ul class="list-inside list-disc text-sm text-text-secondary mt-2">
+					<ul class="list-inside list-disc text-sm text-gray-300">
 						<!-- Group detail : members -->
 						{#if is_group($selected)}
 							{#each ($selected as GroupObject).members as m}

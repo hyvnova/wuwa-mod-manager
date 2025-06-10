@@ -115,20 +115,9 @@ def py_perform_action(action: str, sel: List[dict[Any, Any]]) -> None:
     # Convert indices to space-separated string for handlers
     indices_str = " ".join(map(str, indices))
 
-    # Map frontend actions to handler names
-    handler_map = {
-        Action.Toggle: "toggle",
-        Action.Enable: "toggle",  # Enable is handled by toggle handler
-        Action.Disable: "toggle",  # Disable is handled by toggle handler
-        Action.Delete: "delete",
-        Action.Rename: "rename",
-        Action.CreateGroup: "group",
-    }
-
     try:
         # Get the handler name for this action
         action_enum = Action.from_str(action)
-        handler_name = handler_map[action_enum]
 
         # Special handling for rename action
         if action_enum == Action.Rename:
@@ -154,7 +143,7 @@ def py_perform_action(action: str, sel: List[dict[Any, Any]]) -> None:
             InputBuffer().push(indices_str)
         
         # Call the appropriate handler
-        call_handler(handler_name)
+        call_handler(action)
 
     except (KeyError, ValueError) as e:
         print(f"Invalid action or handler not found: {e}")

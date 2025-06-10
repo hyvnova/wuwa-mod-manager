@@ -58,7 +58,7 @@ def _file_info_from_record(rec: dict) -> dict:
         "url": rec["_sDownloadUrl"],
     }
 
-def download(mod: API_MOD_TYPE, dst: Path = DOWNLOADS_FOLDER) -> Path:
+def download_mod(mod: API_MOD_TYPE, dst: Path = DOWNLOADS_FOLDER) -> Path:
     """
     Download the newest file for *mod* into *dst*.
     Returns Path to the saved archive.

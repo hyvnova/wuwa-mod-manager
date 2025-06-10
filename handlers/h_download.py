@@ -16,7 +16,7 @@ from typing import List, Tuple, Union
 
 from bananas import (
     API_MOD_TYPE,
-    download as dl_mod,
+    download_mod,
     get_recent_mods,
     search_mod,
 )
@@ -34,7 +34,7 @@ def _download_batch(mods: List[API_MOD_TYPE], output_fn) -> None:
     for m in mods:
         output_fn(f"[ / ] Downloading {m.name} …")
         try:
-            path: Path = dl_mod(m, dst=DOWNLOADS_FOLDER)
+            path: Path = download_mod(m, dst=DOWNLOADS_FOLDER)
             output_fn(f"\t[ + ] Saved → {path.resolve()}")
 
             # Create banana id file, so it can be used later

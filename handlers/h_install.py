@@ -71,6 +71,11 @@ def promote_to_root(mod_root: Path, extracted_root: Path, root_folder: Path) -> 
 
 
 def validate_and_collect(into: Dict[str, List[Path]], zip_file: Path) -> None:
+    """
+    Validates a .zip file as a mod, extracts it, and collects its paths.
+    If the mod is valid, it adds its name and paths to the `into` dictionary.
+    """
+
     output_fn = IOProvider().get_output()
     output_fn(f"\t[ / ] Checking {zip_file.name}")
 

@@ -6,3 +6,4 @@ from .h_list import list_handler
 from .h_rebuild import rebuild_handler
 from .h_download import download_handler
 from .h_rename import rename_handler
+from .h_update import update_handler

@@ -5,8 +5,8 @@ from bananas.shared import GAME_ID, URL, INDEX_EP, DATA_EP, FIELDS, API_MOD_TYPE
 
 CHUNK_SIZE = 10  # how many IDs per Data query
 TIMEOUT = 10  # seconds per request
-MAX_RETRIES = 4  # total attempts before giving up
-BACKOFF_BASE = 0.7  # exponential base (sec)
+MAX_RETRIES = 7  # total attempts before giving up
+BACKOFF_BASE = 1  # exponential base (sec)
 
 
 def _safe_get(url: str, **kwargs) -> requests.Response: # type: ignore
@@ -45,7 +45,28 @@ def _fetch_details(ids: List[int]) -> List[API_MOD_TYPE]:
             "return_keys": 1,
         }
         r = _safe_get(DATA_EP, params=params)
-        r.raise_for_status()
+
+        try:
+            r.raise_for_status()
+        except requests.exceptions.HTTPError as exc:
+            if exc.response.status_code == 429:
+                for attempt in range(1, MAX_RETRIES + 1):
+                    # Calculate backoff time with exponential growth and jitter
+                    backoff_time = BACKOFF_BASE * (2 ** (attempt - 1))
+                    jitter = random.uniform(0, backoff_time * 0.2)  # 20% jitter
+                    total_wait = backoff_time + jitter
+                    
+                    print(f"Rate limit hit. Attempt {attempt}/{MAX_RETRIES}, waiting {total_wait:.1f}s")
+                    time.sleep(total_wait)
+                    
+                    r = _safe_get(DATA_EP, params=params)
+                    try:
+                        r.raise_for_status()
+                        break  # Only break if the retry was successful
+                    except requests.exceptions.HTTPError as exc:
+                        if attempt == MAX_RETRIES:
+                            raise exc  # Re-raise last exception if all retries failed
+                        continue  # Continue to next retry attempt
 
         for mod in r.json():  # already list[dict]
             name = mod.get("name")

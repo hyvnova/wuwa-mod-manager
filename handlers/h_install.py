@@ -1,7 +1,5 @@
-from operator import is_
 import os
 import shutil
-from time import sleep
 from typing import  Dict, List
 import zipfile
 from pathlib import Path

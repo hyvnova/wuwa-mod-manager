@@ -51,8 +51,8 @@ def group_handler() -> None:
     # ------------- group name -------------
     while True:
 
-        output_fn("Enter a name for the group: (leave empty to auto-generate)")
-        group_name = input_fn().strip().lower()
+        output_fn("\n")
+        group_name = input_fn("Enter a name for the group: (leave empty to auto-generate)").strip().lower()
         if not group_name:
             group_name = "-".join(sorted(set(m.name for m in selected_mods)))
             output_fn(f"Auto-generated group name: '{group_name}'")

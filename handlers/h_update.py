@@ -3,10 +3,8 @@ from typing import Dict, List
 
 from bananas import search
 from bananas.shared import API_MOD_TYPE
-from bisextypes import ModObject, TypeOfItem
-from constants import DOWNLOADS_FOLDER
-from core import get_modlist, save_modlist
-from handlers.h_install import validate_and_collect
+from bisextypes import ModObject, TypeOfItem 
+from core import get_modlist
 from io_provider import IOProvider
 
 # [REQUIRES OTHER HANDLERS]
@@ -29,8 +27,9 @@ def update_handler():
 
     def _update_mod(mod: ModObject):
         """
-        Placeholder for the actual update logic.
-        This function should handle the update process for a mod.
+        This function is the actual update process for a mod, like it does the handjob.
+        Updates the mod from GameBanana and stores its resources.
+        This function handles the update process for a mod.
         """
         output_fn(f"\t[ / ] Checking for updates: '{mod.name}' (ID: {mod.gb_id})...")
 
@@ -44,25 +43,55 @@ def update_handler():
                 output_fn(f"\t[ ! ] Could not find mod '{mod.name}' on GameBanana.")
                 return
 
-            for result in results:
-                output_fn(f"\t[ / ] Found mod '{result.name}' (ID: {result.id})")
-                output_fn(f"\t[ ? ] Is this the mod you want to update? (y/n)")
-                if input_fn() == "y":
+            output_fn(f"\t[ / ] Found {len(results)} potential matches:")
+            for i, result in enumerate(results, 1):
+                output_fn(f"\t[ {i} ] {result.name} (ID: {result.id})")
+                output_fn(f"\t    Description: {result.description}")
+                output_fn(f"\t    Author: {result.author}")
+                output_fn(f"\t    Date: {result.date}")
+                output_fn(f"\t    Downloads: {result.downloads}")
+
+            output_fn(f"\n")
+            try:
+                choice = int(
+                    input_fn(
+                        "\t[ ? ] Select the mod you want to update (1-{len(results)}), or 0 to skip: "
+                    )
+                )
+                if 1 <= choice <= len(results):
+                    result = results[choice - 1]
                     mod.gb_id = int(result.id)  # type: ignore
                     _mod = result
-                    break
+                elif choice == 0:
+                    output_fn(f"\t[ ! ] Skipping update for {mod.name}")
+                    return
                 else:
-                    output_fn(f"\n")
-                    continue
+                    output_fn(f"\t[ ! ] Invalid choice. Skipping update for {mod.name}")
+                    return
+            except ValueError:
+                output_fn(f"\t[ ! ] Invalid input. Skipping update for {mod.name}")
+                return
 
         else:
+            # Use the existing GameBanana ID to get the latest details
             output_fn(f"\t[ / ] Using existing GameBanana ID: {mod.gb_id}")
-            _mod = API_MOD_TYPE(
-                name=mod.name,
-                id=mod.gb_id,  # type: ignore
-                thumb="",
-                date=0,
-            )
+            _mod = search.get_mod_details(mod.gb_id)  # type: ignore
+            if not _mod:
+                output_fn(f"\t[ ! ] Could not get details for mod ID {mod.gb_id}")
+                return
+
+            # Show mod details and confirm update
+            output_fn(f"\t[ / ] Found mod details:")
+            output_fn(f"\t    Name: {_mod.name}")
+            output_fn(f"\t    Description: {_mod.description}")
+            output_fn(f"\t    Author: {_mod.author}")
+            output_fn(f"\t    Date: {_mod.date}")
+            output_fn(f"\t    Downloads: {_mod.downloads}")
+
+            output_fn(f"\n")
+            if input_fn("\t[ ? ] Update this mod? (y/n): ").lower() != "y":
+                output_fn(f"\t[ ! ] Skipping update for {mod.name}")
+                return
 
         # Now that we have the gamebanana id, we can update the mod
         details: Dict[str, List[Path]] = {}
@@ -104,14 +133,20 @@ def update_handler():
         with concurrent.futures.ThreadPoolExecutor() as executor:
             executor.map(_update_mod, item.members)  # type: ignore
 
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = []
-        for item in modlist:
-            if item.type == TypeOfItem.GROUP:
-                futures.append(executor.submit(process_group, item))
-            else:
-                futures.append(executor.submit(_update_mod, item)) # type: ignore
-        concurrent.futures.wait(futures)
+    # with concurrent.futures.ThreadPoolExecutor() as executor:
+    #     futures = []
+    #     for item in modlist:
+    #         if item.type == TypeOfItem.GROUP:
+    #             futures.append(executor.submit(process_group, item))
+    #         else:
+    #             futures.append(executor.submit(_update_mod, item)) # type: ignore
+    #     concurrent.futures.wait(futures)
+
+    # Syncrhnoes version for testing
+    for item in modlist:
+        if item.type == TypeOfItem.GROUP:
+            process_group(item)
+        else:
+            _update_mod(item) # type: ignore
 
     output_fn("[ + ] Update complete.")
-    

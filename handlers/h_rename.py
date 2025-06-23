@@ -8,8 +8,7 @@ def rename_handler() -> None:
     Renames an installed mod.
     Prompts for the mod index and new name.
     """
-    output_fn = IOProvider().get_output()
-    input_fn = IOProvider().get_input()
+    input_fn, output_fn = IOProvider().get_io()
 
     modlist = get_modlist()
 
@@ -25,8 +24,8 @@ def rename_handler() -> None:
     # Get mod index
     while True:
         try:
-            output_fn("Enter the number of the mod to rename (0 to cancel): ")
-            idx = int(input_fn())
+            output_fn("\n")
+            idx = int(input_fn("Enter the number of the mod to rename (0 to cancel): "))
             if idx == 0:
                 return
             if 1 <= idx <= len(modlist):
@@ -39,8 +38,8 @@ def rename_handler() -> None:
     
     # Get new name
     while True:
-        output_fn(f"Enter new name for '{mod.name}' (or press Enter to cancel): ")
-        new_name = input_fn().strip()
+        output_fn("\n")
+        new_name = input_fn(f"Enter new name for '{mod.name}' (or press Enter to cancel): ").strip()
         if not new_name:
             return
         if new_name == mod.name:

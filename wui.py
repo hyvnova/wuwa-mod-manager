@@ -51,12 +51,12 @@ def py_get_input(value: str) -> None:
     recieved_input[0] = value
     waiting_for_input[0] = False
 
-def input_fn() -> str:
+def input_fn(prompt: str) -> str:
     # This function is called when Python needs input from the user, but we're in a browser!
     # So we poke JS, then sleep until JS pokes us back (see above).
     # It's a little dance, but it works.
     # tell js we want input
-    eel.js_request_input() # type: ignore
+    eel.js_request_input(prompt) # type: ignore
 
     # zZzZzzZ
     waiting_for_input[0] = True
@@ -70,7 +70,7 @@ def input_fn() -> str:
     recieved_input[0] = "No input recieved"  # Reset for next input
 
     # print(f"Returning input: {value}")
-    return value
+    return value.strip()
 
 
 @eel.expose
@@ -126,7 +126,7 @@ def py_perform_action(action: str, sel: List[dict[Any, Any]]) -> None:
                 return
             
             # Get new name from frontend
-            name = input_fn().strip()
+            name = input_fn("Enter new name for the mod: ")
             if not name:
                 print("Rename action cancelled or empty name provided")
                 return

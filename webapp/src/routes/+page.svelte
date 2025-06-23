@@ -13,7 +13,7 @@
 		handleModlistUpdate,
 		handleInputFn
 	} from '$lib';
-	import { eel, getting_input, mod_resources, modlist, show_log_panel } from '$store/data';
+	import { eel, input_prompt, mod_resources, modlist, show_log_panel } from '$store/data';
 
 	import type { Eel } from '$lib/types';
 	import {
@@ -200,14 +200,14 @@
 		multiSelected.update(list => list.filter(m => m.name !== modItem.name));
 	}
 
-	getting_input.subscribe((getting) => {
-		if (getting) {
+	input_prompt.subscribe((input_prompt) => {
+		if (input_prompt) {
 			show_log_panel.set(true);
-			let val = prompt('Enter input:');
+			let val = prompt(input_prompt);
 			if (val !== null) {
 				$eel.py_get_input(val);
 			} else {
-				getting_input.set(false);
+				input_prompt.set(null);
 			}
 		} else {
 			show_log_panel.set(false);

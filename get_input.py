@@ -52,8 +52,8 @@ def get_menu_input(
         return options.index(best) + 1 if best in options else None
 
     while True:
-        output_fn("\n" + prompt + "\n")
-        raw = input_fn().strip()
+        output_fn("\n")
+        raw = input_fn(prompt)
         
         if not raw:
             output_fn("That's not it.")
@@ -111,8 +111,8 @@ def get_confirmation(
     (input_fn, output_fn) = IOProvider().get_io()
 
     while True:
-        output_fn(prompt)
-        response = input_fn().strip().lower()
+        output_fn("\n")
+        response = input_fn(prompt).strip().lower()
         if not response:
             response = default
 

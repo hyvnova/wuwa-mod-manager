@@ -21,20 +21,21 @@ IOProvider().set_io(
     output_fn=print,
 )
 
+# InputBuffer().push("8")
 
 # ────────────────────────────
 #  CLI loop
 # ────────────────────────────
-MENU: Dict[int, tuple[str, Callable[[], None]]] = {
-    0: ("Exit", lambda: sys.exit(0)),
-    1: ("Install", get_handler("install")),
-    2: ("Delete", get_handler("delete")),
-    3: ("Toggle", get_handler("toggle")),
-    4: ("List", get_handler("list")),
-    5: ("Create Group", get_handler("group")),
-    6: ("Rebuild", get_handler("rebuild")),
-    7: ("Download", get_handler("download")),
-    8: ("Update", get_handler("update")),
+MENU: Dict[int, tuple[str, str, Callable[[], None]]] = {
+    0: ("Exit", "Close Program", lambda: sys.exit(0)),
+    1: ("Install", "Install a mod from a local .zip file", get_handler("install")),
+    2: ("Delete", "Remove mod from modlist and move it to Deleted Mods Folder", get_handler("delete")),
+    3: ("Toggle", "Toggle a mod", get_handler("toggle")),
+    4: ("List", "List all tracked mods", get_handler("list")),
+    5: ("Create Group", "Makes selected mods act as one", get_handler("group")),
+    6: ("Rebuild", "Rebuild the mod list to reflect changes in the Mods folder", get_handler("rebuild")),
+    7: ("Download", "Download a mod from gamebanana (BETA)", get_handler("download")),
+    8: ("Update", "Update a mod from gamebanana (BETA)", get_handler("update")),
 }
 
 
@@ -43,17 +44,20 @@ def main() -> None:
     get_handler("rebuild")()  # Rebuild modlist.json on startup
 
 
-    option_names = [name.lower() for name, _ in MENU.values()]
+    input_fn, print_fn = IOProvider().get_io()
+
+    option_names = [name.lower() for name, _, _ in MENU.values()]
 
     while True:
         os.system("cls" if os.name == "nt" else "clear")
 
-        print("WuWa Mod Manager".center(30, "="))
+        print_fn("WuWa Mod Manager".center(30, "="))
 
         for i, n in enumerate(option_names):
-            print(f"[ {i} ] {n}")
+            print_fn(f"[ {i} ] {n} - {MENU[i][1]}")
 
-        choice = input("\nNumber / name (q to quit): ").strip()
+
+        choice = input_fn("\nNumber / name (q to quit): ").strip()
         if choice.lower() == "q":
             sys.exit(0)
 
@@ -68,13 +72,13 @@ def main() -> None:
             idx = option_names.index(match)
 
         if idx not in MENU:
-            print("Invalid selection.")
+            print_fn("Invalid selection.")
             continue
 
-        print("\n")
-        MENU[idx][1]()
+        print_fn("\n")
+        MENU[idx][-1]()
         # wait for user to press Enter before continuing
-        input("\nPress Enter to continue...")
+        input_fn("\nPress Enter to continue...")
 
 
 if __name__ == "__main__":

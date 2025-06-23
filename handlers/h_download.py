@@ -74,13 +74,13 @@ def download_handler() -> None:
     input_fn, output_fn = IOProvider().get_io()
 
     # 2 ─ ask whether to search instead
-    output_fn("\nDo you want to search? (y/N): ")
-    choice = input_fn().strip().lower()
+    output_fn("\n")
+    choice = input_fn("Do you want to search? (y/N): ").strip().lower()
 
     if choice.startswith("y") or not choice:  # default to search if empty
         # 2-A ─ search flow
-        output_fn("Search query: ")
-        query = input_fn().strip()
+        output_fn("\n")
+        query = input_fn("Search query: ").strip()
         if not query:
             output_fn("No query entered → aborting search.")
             return

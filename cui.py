@@ -27,6 +27,7 @@ IOProvider().set_io(
 #  CLI loop
 # ────────────────────────────
 MENU: Dict[int, tuple[str, str, Callable[[], None]]] = {
+    # Index: (Name, Description, Handler)
     0: ("Exit", "Close Program", lambda: sys.exit(0)),
     1: ("Install", "Install a mod from a local .zip file", get_handler("install")),
     2: ("Delete", "Remove mod from modlist and move it to Deleted Mods Folder", get_handler("delete")),

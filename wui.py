@@ -15,7 +15,7 @@ import eel
 from bisextypes import Action, GroupObject, Item, ModObject, TypeOfItem
 from constants import ACTIVE_MODS_FOLDER, DELETED_MODS_FOLDER, SAVED_MODS_FOLDER, WEBAPP_BUILD_PATH, WEBAPP_DIR_NAME, WEBAPP_PATH
 from bisex import BiSex
-from core import MODLIST_FILE, MODS_RESOURCES_FILE, item_from_dict, ensure_dirs_and_files, get_modlist, save_modlist
+from core import MODLIST_JSON, MODS_RESOURCES_FILE, item_from_dict, ensure_dirs_and_files, get_modlist, save_modlist
 from handler_caller import call_handler
 from input_buffer import InputBuffer
 from io_provider import IOProvider
@@ -151,7 +151,7 @@ def py_perform_action(action: str, sel: List[dict[Any, Any]]) -> None:
 
     # Notify the frontend to update its modlist view
     try:
-        with open(MODLIST_FILE, "r", encoding="utf-8") as f:
+        with open(MODLIST_JSON, "r", encoding="utf-8") as f:
             data = f.read()
             eel.js_update_modlist(data)  # type: ignore
     except Exception as e:
@@ -160,7 +160,7 @@ def py_perform_action(action: str, sel: List[dict[Any, Any]]) -> None:
 @eel.expose
 @bisex.raw_fuck("EelService")
 def py_raw_get_modlist() -> str:
-    with open(MODLIST_FILE, "r", encoding="utf-8") as f:
+    with open(MODLIST_JSON, "r", encoding="utf-8") as f:
         return f.read()
 
 

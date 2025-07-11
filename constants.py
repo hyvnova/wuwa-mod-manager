@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Tuple
 
 # ----------------------------
 #  Paths & constants
@@ -28,35 +29,22 @@ MOD_RES_FOLDER = (
     WWMI_FOLDER / "ModResources"
 )  # Folder where UI resources are stored, images or icons
 
-# Not the smartest way I guess
-APP_DIRS = (
-    TEMP_FOLDER,
-    SAVED_MODS_FOLDER,
-    ACTIVE_MODS_FOLDER,
-    DELETED_MODS_FOLDER,
-    MOD_RES_FOLDER,
-)
 
-MODLIST_FILE = (
+MODLIST_JSON = (
     WWMI_FOLDER / "modlist.json"
 )  # File where the list of installed mods and groups are stored
+INIT_OF_MODLIST_JSON = "[]"
 
 # Allowed folder names. Since some mods don't contain a mod.ini and intead have something like "modname.ini"
 # This file will keep track of the allowed folder names, so that the user can install mods without a mod.ini file.
 ALLOWED_MODS_FILE = WWMI_FOLDER / "allowed_mods.json"
+INIT_OF_ALLOWED_MODS_FILE = "[]"
 
 # UI resources for mods
 MODS_RESOURCES_FILE = (
     WWMI_FOLDER / "mods_resources.json"
 )  # File where the resources for the mods are stored
-
-
-# Path var: Initial Content
-APP_JSON_FILES = (
-    (MODLIST_FILE, "[]"),
-    (ALLOWED_MODS_FILE, "[]"),
-    (MODS_RESOURCES_FILE, "{}"),
-)
+INIT_OF_MODS_RESOURCES_FILE = "{}"  # Initial content of the mods resources file
 
 
 # ---------------------------- Webapp Paths & Contants ----------------------------
@@ -65,3 +53,41 @@ APP_JSON_FILES = (
 WEBAPP_DIR_NAME = "webapp"
 WEBAPP_PATH = Path(__file__).parent / WEBAPP_DIR_NAME
 WEBAPP_BUILD_PATH = WEBAPP_PATH / "build"
+
+
+# ---------------------------- Helper Functions / Public API ----------------------------
+def get_app_dirs() -> tuple[Path, ...]:
+    """
+    Fetch all application directories from global constants.
+    # Criteria:
+    - Any variable that ends with `_FOLDER`.
+    - Any variable that is a Path object.
+    """
+    return tuple(
+        dir
+        for dir in globals().values()
+        if isinstance(dir, Path)  # Check if it's a Path object
+        and dir.name.endswith("FOLDER") # Check if it ends with _FOLDER
+    )
+
+
+def get_app_json_files() -> Tuple[Tuple[Path, str], ...]:
+    """
+    Fetch all application JSON files from global constants.
+    # Criteria:
+    - Any variable that ends with `JSON`.
+    - Any variable that is a Path object.
+
+    If a variable in the format `INIT_OF_<file_name>` exists, it will be used as the initial content.
+    Otherwise, "[]" will be used as the initial content.
+    """
+
+    return tuple(
+        (
+            file,  # path to the JSON file
+            globals().get(f"INIT_OF_{file.name.upper()}", "[]") # try to find init content variable, default to "[]"
+        )
+        for file in globals().values()
+        if isinstance(file, Path)  # Check if it's a Path object
+        and file.name.endswith("JSON")  # Check if it ends with _JSON
+    )

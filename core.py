@@ -56,10 +56,10 @@ if not WWMI_FOLDER.exists():
 # ----------------------------
 def get_modlist() -> ModList:
     # This loads the modlist from disk, and tries to recover if it's corrupted.
-    if not MODLIST_FILE.exists():
+    if not MODLIST_JSON.exists():
         return []
     try:
-        with MODLIST_FILE.open(encoding="utf-8") as fh:
+        with MODLIST_JSON.open(encoding="utf-8") as fh:
             raw: list[dict] = json.load(fh)
     except (json.JSONDecodeError, OSError):
         print("[ ! ] Corrupted modlist, resetting.")
@@ -81,7 +81,7 @@ def get_modlist() -> ModList:
 def save_modlist(modlist: ModList) -> None:
     # Save the modlist to disk, always as pretty JSON (for human debugging and cuteness).
     serializable = [m.to_dict() for m in modlist] # type: ignore
-    with MODLIST_FILE.open("w", encoding="utf-8") as fh:
+    with MODLIST_JSON.open("w", encoding="utf-8") as fh:
         json.dump(serializable, fh, indent=4, ensure_ascii=False)
 
 
@@ -113,13 +113,13 @@ def save_mod_resources(resources: dict[str, ModResource]) -> None:
 # ----------------------------
 def ensure_dirs_and_files() -> None:
     # This is the boot ritual: make sure all folders and JSON files exist, so the app never crashes on startup.
-    for directory in APP_DIRS:
+    for directory in get_app_dirs():
         if not directory.exists():
             directory.mkdir(parents=True, exist_ok=True) # type: ignore
             print(f"[ + ] Created directory: {directory}")
 
     # Ensure all json files exist
-    for json_file, init_content in APP_JSON_FILES:
+    for json_file, init_content in get_app_json_files():
         if not json_file.exists():
             json_file.write_text(init_content, encoding="utf-8")
             print(f"[ + ] Created JSON file: {json_file}")

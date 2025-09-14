@@ -1,4 +1,4 @@
-from attr import dataclass
+from dataclasses import dataclass
 
 
 URL = "https://gamebanana.com/games/20357"  # Wuthering Waves

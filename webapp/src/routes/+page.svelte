@@ -205,7 +205,7 @@
 			show_log_panel.set(true);
 			let val = prompt(input_prompt);
 			if (val !== null) {
-				$eel.py_get_input(val);
+				$eel.py_get_input(val)();
 			} else {
 				input_prompt.set(null);
 			}

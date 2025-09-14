@@ -8,15 +8,13 @@ import re
 _non_alnum = re.compile(r"[^a-z0-9\s]+")
 
 
-def _clean(text: str) -> str:
-    """
-    Lowercase, kill punctuation, collapse spaces.
-    """
-    return _non_alnum.sub(" ", text.lower()).split() # type: ignore
+def _clean(text: str) -> List[str]:
+    """Lowercase, strip punctuation, split into tokens (space-delimited)."""
+    return _non_alnum.sub(" ", text.lower()).split()
 
 
-def _join_tokens(tokens) -> str:
-    # Sort so word order doesn't matter (token-set ratio style)
+def _join_tokens(tokens: List[str]) -> str:
+    """Deterministically join tokens (sorted) so order doesn’t matter."""
     return " ".join(sorted(tokens))
 
 

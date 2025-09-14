@@ -32,11 +32,10 @@ def _get_multimod_paths(
         if mod.type != TypeOfItem.MOD:
             continue
 
-        if len(mod.path) > 2: # type: ignore
-            continue
-
-        for p in mod.path: # type: ignore
-            s.add(p)
+        # Multi-mods have more than one path
+        if len(mod.path) > 1:  # type: ignore[attr-defined]
+            for p in mod.path:  # type: ignore[attr-defined]
+                s.add(p)
     return s
 
 def _log_copy(src: Path, dest: Path, output) -> None:

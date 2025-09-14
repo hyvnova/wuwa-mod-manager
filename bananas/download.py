@@ -1,8 +1,9 @@
-# bananas/downloader.py
+"""Download helpers for GameBanana mods."""
+
 import re, os, time, random, requests
 from pathlib import Path
 from requests.exceptions import RequestException
-from core import DOWNLOADS_FOLDER
+from constants import DOWNLOADS_FOLDER
 from bananas.shared import API_MOD_TYPE
 
 # retry / timeout settings
@@ -15,7 +16,7 @@ CHUNK = 16 * 1024  # 16 KiB stream-chunk
 # -------------------------------------------------------------
 #  low-level helpers
 # -------------------------------------------------------------
-def _safe_get(url: str, **kwargs) -> requests.Response: # type: ignore
+def _safe_get(url: str, **kwargs) -> requests.Response:  # type: ignore
     """GET with retries + exponential back-off."""
     for attempt in range(1, MAX_RETRIES + 1):
         try:
@@ -31,9 +32,7 @@ GB_CORE_DATA = "https://api.gamebanana.com/Core/Item/Data"
 
 
 def _latest_file_record(mod_id: int) -> dict:
-    """
-    Return the *dict* for the newest file attached to `mod_id`.
-    """
+    """Return the dict for the newest file attached to a mod id."""
     params = {
         "itemtype": "Mod",
         "itemid": mod_id,
@@ -59,10 +58,7 @@ def _file_info_from_record(rec: dict) -> dict:
     }
 
 def download_mod(mod: API_MOD_TYPE, dst: Path = DOWNLOADS_FOLDER) -> Path:
-    """
-    Download the newest file for *mod* into *dst*.
-    Returns Path to the saved archive.
-    """
+    """Download the newest file for a mod into dst and return its path."""
     m = re.search(r"/mods/(\d+)", mod.link)
     if not m:
         raise ValueError(f"Cannot parse mod-ID from {mod.link}")

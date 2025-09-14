@@ -186,8 +186,11 @@ def py_call_handler(handler_name: str) -> None:
 
     print(f"Calling handler: {handler_name}")
 
-    # Handler function it's already imported from handlers modula as "{handler_name}_handler"
-    handler_fn = globals().get(f"{handler_name}_handler")
+    # Resolve either a short name (e.g., "rebuild") or a fully-qualified
+    # function name (e.g., "rebuild_handler").
+    candidate = handler_name if handler_name.endswith("_handler") else f"{handler_name}_handler"
+
+    handler_fn = globals().get(candidate)
 
     # print all globals that have handler in their name
     for name, value in globals().items():
@@ -202,7 +205,7 @@ def py_call_handler(handler_name: str) -> None:
     # print(f"{eel.js_input_fn=}")
     # print(f"{eel.js_output_fn=}")
 
-    # It's kinda bad to set functions in every fucking call
+    # It's kinda bad to set functions in every call
     # But I can't be bothered to do it better right now
     # Fuck you.
     IOProvider().set_io(
@@ -227,8 +230,20 @@ os.system(f"cd {WEBAPP_DIR_NAME} && npm run build")
 
 eel.init(
     str(WEBAPP_BUILD_PATH),
-    # svelte build
-    allowed_extensions=[".js", ".html", ".ts", ".svelte"],
+    # Allow all assets needed by Svelte build
+    allowed_extensions=[
+        ".js",
+        ".html",
+        ".ts",
+        ".svelte",
+        ".css",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".svg",
+        ".json",
+        ".map",
+    ],
 )
 
 eel.start("index.html", mode="edge")

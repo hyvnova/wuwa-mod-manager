@@ -1,3 +1,11 @@
+"""
+Core helpers for persistence, validation, and bootstrap routines.
+
+This module intentionally avoids any interactive prompts or exits at import
+time to keep imports side‑effect free. Entry points (CLI / WUI) should call
+`ensure_dirs_and_files()` before performing any other work.
+"""
+
 from pathlib import Path
 from bisextypes import GroupObject, TypeOfItem, ModList, ModObject, ModResource
 from get_input import get_confirmation
@@ -5,48 +13,7 @@ from io_provider import IOProvider
 import json
 from typing import List, Tuple
 
-
 from constants import *
-
-# Debug Paths
-# print(f"{USER_HOME}")
-# print(f"{DOWNLOADS_FOLDER=}")
-# print(f"{APPDATA_FOLDER=}")
-# print(f"{SAVED_MODS_FOLDER=}")
-# print(f"{ACTIVE_MODS_FOLDER=}")
-# print(f"{MODLIST_FILE=}")
-
-# If not downloads ask user to set up where stupid path where they their stupid mods
-if not DOWNLOADS_FOLDER.exists():
-    print(
-        "[ ! ] The Downloads folder does not exist.\n"
-        "Please set up your Downloads folder in your system settings.\n",
-        "And fuck you.\n"
-    )
-
-    DOWNLOADS_FOLDER = Path(input("Enter ABSOLUTE PATH to your Downloads folder or the Folder where you install mods: "))
-    # Assume path it's good. Profit $
-
-# If appdata doesn't exist tell user to fucking find it
-if not APPDATA_FOLDER.exists():
-    print(
-        "[ ! ] The AppData folder does not exist.\n"
-        "Please set up your AppData folder in your system settings.\n",
-        "And fuck you.\n"
-    )
-
-    APPDATA_FOLDER = Path(input("Enter ABSOLUTE PATH to your AppData folder: "))
-    # Assume path it's good again, double profit $$
-
-# If WWMI_FOLDER does not exist, tell user to fucking install it.
-if not WWMI_FOLDER.exists():
-    print(
-        f"[ ! ] The folder {WWMI_FOLDER} does not exist.\n"
-        "Please install the XXMI Launcher first.\n"
-        "And fuck you.\n"
-        "Here's the link smartypants: https://github.com/SpectrumQT/XXMI-Launcher"
-    )
-    exit(1)
 
 
 
@@ -112,10 +79,16 @@ def save_mod_resources(resources: dict[str, ModResource]) -> None:
 #  Boot-strapping
 # ----------------------------
 def ensure_dirs_and_files() -> None:
-    # This is the boot ritual: make sure all folders and JSON files exist, so the app never crashes on startup.
+    """
+    Ensure the application directory structure and JSON files exist.
+
+    - Creates all directories declared by `constants.get_app_dirs()`.
+    - Creates all JSON files discovered by `constants.get_app_json_files()`
+      with their declared initial content.
+    """
     for directory in get_app_dirs():
         if not directory.exists():
-            directory.mkdir(parents=True, exist_ok=True) # type: ignore
+            directory.mkdir(parents=True, exist_ok=True)  # type: ignore[arg-type]
             print(f"[ + ] Created directory: {directory}")
 
     # Ensure all json files exist
@@ -142,7 +115,15 @@ def is_valid_mod_folder(folder: Path) -> Tuple[bool, str, List[Path]]:
 
     # Gather every directory that DIRECTLY contains a mod.ini file
 
-    allowed_mods: List[str] = json.loads(ALLOWED_MODS_FILE.read_text(encoding="utf-8")) # Names of allowed mods (folder names)
+    # Load allowed-mods list; default to [] if the file is missing or invalid.
+    try:
+        allowed_mods: List[str] = json.loads(
+            ALLOWED_MODS_FILE.read_text(encoding="utf-8")
+        )
+        if not isinstance(allowed_mods, list):
+            allowed_mods = []
+    except Exception:
+        allowed_mods = []
     mod_dirs: List[Path] = [] # Keeps track of directories that contain a mod.ini file, the mods
 
     # Gather all .ini
@@ -186,8 +167,12 @@ def is_valid_mod_folder(folder: Path) -> Tuple[bool, str, List[Path]]:
         if positive_response:
             allowed_mods.append(p.parent.name)  # Add the folder name to allowed_mods
             # Save updated allowed_mods
-            with ALLOWED_MODS_FILE.open("w", encoding="utf-8") as fh:
-                json.dump(allowed_mods, fh, indent=4, ensure_ascii=False)
+            try:
+                with ALLOWED_MODS_FILE.open("w", encoding="utf-8") as fh:
+                    json.dump(allowed_mods, fh, indent=4, ensure_ascii=False)
+            except Exception:
+                # Non-fatal: inability to persist allowed-mods should not block install.
+                pass
 
             mod_dirs.append(p.parent)
 

@@ -1,17 +1,17 @@
-from typing import Callable, Tuple
-from typing import Callable, Optional
+from typing import Callable, Tuple, Optional
 
 from input_buffer import InputBuffer
 
 
 class IOProvider:
-    """
-    Singleton class that stores:
-     - input -- Callable[[str], str]
-    - output -- Callable[[str], None]
+    """Singleton for pluggable input/output callables.
 
-    # This class is the IO chameleon: it lets the core logic talk to any UI (console, web, etc) without knowing or caring.
-    # It also lets you swap input/output on the fly, so you can automate, test, or just be fancy.
+    - input:  Callable[[str], str]
+    - output: Callable[[str], None]
+
+    The input function is wrapped to consult an InputBuffer first, enabling
+    non-blocking automation (used by the Web UI and tests) while keeping the
+    same code paths for the console UI.
     """
     _instance = None
 
@@ -23,15 +23,9 @@ class IOProvider:
         return cls._instance
 
     def _set_input_wrapper(self, input_fn: Callable[[str], str]) -> Callable[[str], str]:
-        """
-        Wrapper for the input function to give priority to the input buffer.
-        Checks (and consumes) the input buffer on EACH call.
-        # This is the secret sauce: if there's a value in the buffer, use it instead of asking the user. Great for automation and web UI!
-        """
-        def wrapped_input( prompt: str):
-
+        """Wrap the input function to give priority to the InputBuffer."""
+        def wrapped_input(prompt: str):
             prompt = prompt or "Provide a valid input: "
-
             v = InputBuffer().pop()
             if v is not None:
                 return v
@@ -43,7 +37,7 @@ class IOProvider:
     ) -> None:
         self.input_fn = self._set_input_wrapper(input_fn)
         self.output_fn = output_fn
-        # This lets you swap input/output at runtime, so the same logic works everywhere (and you can test things easily).
+        # Allows swapping IO at runtime (console/web/tests).
 
     def get_io(self) -> Tuple[Callable[[str], str], Callable[[str], None]]:
         if not callable(self.input_fn) or not callable(self.output_fn):

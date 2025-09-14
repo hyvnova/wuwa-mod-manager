@@ -34,6 +34,8 @@ def _download_batch(mods: List[API_MOD_TYPE], output_fn) -> None:
     for m in mods:
         output_fn(f"[ / ] Downloading {m.name} …")
         try:
+            # Ensure temp folder exists for banana id storage
+            TEMP_FOLDER.mkdir(parents=True, exist_ok=True)
             path: Path = download_mod(m, dst=DOWNLOADS_FOLDER)
             output_fn(f"\t[ + ] Saved → {path.resolve()}")
 

@@ -25,7 +25,7 @@ def get_menu_input(
     tuple[int, ...]
         many indexes in input order with duplicates removed
 
-    # This is the menu fairy: it lets users pick options by number or by typing (even badly), so the UI is always friendly and forgiving.
+    # UI-agnostic: all I/O goes through IOProvider.
     """
 
     (input_fn, output_fn) = IOProvider().get_io()
@@ -48,7 +48,10 @@ def get_menu_input(
         
         _best_for_display = best.split("|")[1] if "|" in best else best
 
-        print(f"Best match for '{token}' is '{_best_for_display}' which is option {options.index(best) + 1}")
+        output_fn = IOProvider().get_output()
+        output_fn(
+            f"Best match for '{token}' is '{_best_for_display}' which is option {options.index(best) + 1}"
+        )
         return options.index(best) + 1 if best in options else None
 
     while True:

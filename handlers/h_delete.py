@@ -1,4 +1,3 @@
-from re import S
 import shutil
 
 from io_provider import IOProvider
@@ -6,11 +5,8 @@ from core import ACTIVE_MODS_FOLDER, DELETED_MODS_FOLDER, SAVED_MODS_FOLDER, get
 from get_input import get_menu_input
 
 
-def delete_handler(
-) -> None:
-    """
-    Removes selected mods entirely (files & entry).
-    """
+def delete_handler() -> None:
+    """Remove selected mods entirely (files and entry)."""
 
     output_fn = IOProvider().get_output()
 
@@ -28,10 +24,18 @@ def delete_handler(
     sel = (sel,) if isinstance(sel, int) else sel
 
     if 0 in sel:
-        
+        # Move both trees into DeletedMods (best-effort) and clear modlist
         for d in (SAVED_MODS_FOLDER, ACTIVE_MODS_FOLDER):
-            shutil.move(d, DELETED_MODS_FOLDER / d.name)
-            shutil.rmtree(d, ignore_errors=True)
+            try:
+                dest = DELETED_MODS_FOLDER / d.name
+                # If destination exists from a previous delete-all, remove it first
+                if dest.exists():
+                    shutil.rmtree(dest, ignore_errors=True)
+                shutil.move(d, dest)
+            except Exception as e:
+                output_fn(f"\t[ ! ] Failed moving '{d}' to deleted: {e}")
+            finally:
+                shutil.rmtree(d, ignore_errors=True)
 
         modlist.clear()
     else:

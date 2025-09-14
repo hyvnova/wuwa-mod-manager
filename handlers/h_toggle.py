@@ -16,9 +16,7 @@ from io_provider import IOProvider
 
 
 def _activate_mod(mod: ModObject) -> None:
-    """
-    Copy each path in the mod to the active mods folder.
-    """
+    """Enable a mod by copying its folder(s) into the active mods folder."""
     dest_root = ACTIVE_MODS_FOLDER
 
     for p in mod.path:
@@ -39,22 +37,18 @@ def _activate_mod(mod: ModObject) -> None:
 
 
 def _activate_group(group: GroupObject) -> None:
-    """
-    Activate all mods in a group.
-    """
+    """Enable all mods contained in a group."""
     output_fn = IOProvider().get_output()
     for mod in group.members:
         if not mod.enabled:
             mod.enabled = True
             _activate_mod(mod)
-            
+
     output_fn(f"\t[ + ] Enabled  Group {group.name}")
 
 
 def toggle_handler() -> None:
-    """
-    Toggle (enable ⇄ disable) selected mods.
-    """
+    """Toggle (enable/disable) selected mods or groups."""
     output_fn = IOProvider().get_output()
 
     modlist = get_modlist()
@@ -80,39 +74,27 @@ def toggle_handler() -> None:
 
         if item.enabled:
             if item.type == TypeOfItem.GROUP:
-                # Activate the whole group
-                _activate_group(item) # type: ignore
+                _activate_group(item)  # type: ignore[arg-type]
             elif item.type == TypeOfItem.MOD:
-                _activate_mod(item) # type: ignore
-
+                _activate_mod(item)  # type: ignore[arg-type]
             else:
                 stderr.write(f"Unimplemented item type {item.type} for {item.name}\n")
                 exit(1)
         else:
+            # Build list of paths to remove from Active Mods
+            paths: List[Path]
+            if item.type == TypeOfItem.GROUP:
+                paths = [Path(p) for m in item.members for p in m.path]  # type: ignore[attr-defined]
+            elif item.type == TypeOfItem.MOD:
+                paths = [Path(p) for p in item.path]  # type: ignore[attr-defined]
+            else:
+                stderr.write(f"Unimplemented item type {item.type} for {item.name}\n")
+                exit(1)
 
-            paths: List[Path] = []
-            match item.type:
-                case TypeOfItem.GROUP:
-                    paths = [
-                                Path(p) for m in item.members  # type: ignore
-                                for p in m.path
-                            ]
-                    break
-                    
-                case TypeOfItem.MOD:
-                    paths = [Path(p) for p in item.path] # type: ignore
-                    break
+            for p in paths:
+                shutil.rmtree(ACTIVE_MODS_FOLDER / p.name, ignore_errors=True)
 
-                case _:
-                    stderr.write(f"Unimplemented item type {item.type} for {item.name}\n")
-                    exit(1)
-
-            
-            for p in mod.path:
-                shutil.rmtree(
-                    ACTIVE_MODS_FOLDER / Path(p).name, ignore_errors=True
-                )
-
-            output_fn(f"\t[ - ] Disabled Group {item.name}")
+            label = "Group " + item.name if item.type == TypeOfItem.GROUP else item.name
+            output_fn(f"\t[ - ] Disabled {label}")
 
     save_modlist(modlist)

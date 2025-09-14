@@ -2,10 +2,23 @@ import os
 from pathlib import Path
 from typing import Tuple
 
+"""
+Constants and path helpers for the WuWa Mod Manager.
+
+This module centralizes all filesystem locations used by the application and
+provides helpers to enumerate app directories and JSON files in a robust way.
+
+Design goals:
+- Keep all path configuration in one place.
+- Offer programmatic discovery of app directories and JSON files so
+  bootstrapping code can create them when missing.
+"""
+
 # ----------------------------
 #  Paths & constants
 # ----------------------------
-# All the important folders and files live here, so you only have to change things in one place if you move stuff around.
+# All the important folders and files live here, so you only have to change
+# things in one place if you move stuff around.
 USER_HOME = Path.home()
 
 APPDATA_FOLDER = Path(os.getenv("APPDATA", USER_HOME / "AppData" / "Roaming"))
@@ -58,36 +71,39 @@ WEBAPP_BUILD_PATH = WEBAPP_PATH / "build"
 # ---------------------------- Helper Functions / Public API ----------------------------
 def get_app_dirs() -> tuple[Path, ...]:
     """
-    Fetch all application directories from global constants.
-    # Criteria:
-    - Any variable that ends with `_FOLDER`.
-    - Any variable that is a Path object.
+    Return all application directories declared in this module.
+
+    Selection criteria (by variable name):
+    - Variable name ends with "_FOLDER".
+    - Variable value is a Path instance.
+
+    This inspects the module's globals using both name and value to avoid
+    mistakes caused by checking the final path segment (which is unrelated to
+    the constant's name).
     """
-    return tuple(
-        dir
-        for dir in globals().values()
-        if isinstance(dir, Path)  # Check if it's a Path object
-        and dir.name.endswith("FOLDER") # Check if it ends with _FOLDER
-    )
+    items: list[Path] = []
+    for name, value in globals().items():
+        if name.endswith("_FOLDER") and isinstance(value, Path):
+            items.append(value)
+    return tuple(items)
 
 
 def get_app_json_files() -> Tuple[Tuple[Path, str], ...]:
     """
-    Fetch all application JSON files from global constants.
-    # Criteria:
-    - Any variable that ends with `JSON`.
-    - Any variable that is a Path object.
+    Return all JSON files to be created/ensured by the application.
 
-    If a variable in the format `INIT_OF_<file_name>` exists, it will be used as the initial content.
-    Otherwise, "[]" will be used as the initial content.
+    Selection criteria:
+    - Variable value is a Path whose suffix is ".json" (case-insensitive).
+
+    Initial contents selection:
+    - Look for a sibling constant named `INIT_OF_<VAR_NAME>` where VAR_NAME
+      is the name of the Path constant (e.g., `MODLIST_JSON`).
+    - If not found, default to "[]" (a valid empty JSON array).
     """
-
-    return tuple(
-        (
-            file,  # path to the JSON file
-            globals().get(f"INIT_OF_{file.name.upper()}", "[]") # try to find init content variable, default to "[]"
-        )
-        for file in globals().values()
-        if isinstance(file, Path)  # Check if it's a Path object
-        and file.name.endswith("JSON")  # Check if it ends with _JSON
-    )
+    out: list[tuple[Path, str]] = []
+    for name, value in globals().items():
+        if isinstance(value, Path) and value.suffix.lower() == ".json":
+            init_var = f"INIT_OF_{name}"
+            init = globals().get(init_var, "[]")
+            out.append((value, init))
+    return tuple(out)
